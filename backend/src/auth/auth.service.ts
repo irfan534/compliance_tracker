@@ -1,0 +1,557 @@
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as argon2 from 'argon2';
+import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { UsersService } from '../users/users.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { AuditAction, AuditSeverity } from '@prisma/client';
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+    private usersService: UsersService,
+  ) {}
+
+  private async createAuditLog(
+    action: AuditAction,
+    severity: AuditSeverity,
+    details: string,
+    organizationId: string,
+    userId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+    metadata?: Record<string, any>,
+  ) {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action,
+          severity,
+          details,
+          userId,
+          organizationId,
+          ipAddress,
+          userAgent,
+          entityType: 'USER',
+          changes: metadata || {},
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to create audit log:', error);
+    }
+  }
+
+  async register(registerDto: RegisterDto, req?: any) {
+    const { email, password, firstName, lastName } = registerDto;
+
+    try {
+      // Validate input
+      if (!email || !password || !firstName || !lastName) {
+        throw new BadRequestException('All fields are required');
+      }
+
+      if (password.length < 8) {
+        throw new BadRequestException('Password must be at least 8 characters long');
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new BadRequestException('Invalid email format');
+      }
+
+      // Check if user already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        await this.createAuditLog(
+          AuditAction.USER_CREATED,
+          AuditSeverity.WARNING,
+          `Registration attempt with existing email: ${email}`,
+          existingUser.organizationId,
+          undefined,
+          req?.ip,
+          req?.get('user-agent'),
+          { email, success: false, reason: 'User already exists' }
+        );
+        throw new BadRequestException('User already exists');
+      }
+
+      // Hash password using Argon2id with secure parameters
+      const hashedPassword = await argon2.hash(password, {
+        type: argon2.argon2id,
+        memoryCost: 65536,
+        timeCost: 3,
+        parallelism: 4,
+        saltLength: 16,
+        hashLength: 32,
+      });
+
+      // Create organization
+      const organization = await this.prisma.organization.create({
+        data: {
+          name: `${firstName} ${lastName}'s Organization`,
+          industry: 'Technology',
+          size: 'small',
+        },
+      });
+
+      // Create user
+      const user = await this.prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          firstName,
+          lastName,
+          organizationId: organization.id,
+          emailVerified: false,
+          role: 'SUPER_ADMIN',
+          status: 'ACTIVE',
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          organizationId: true,
+          status: true,
+        },
+      });
+
+      // Create audit log
+      await this.createAuditLog(
+        AuditAction.USER_CREATED,
+        AuditSeverity.INFO,
+        `New user registered: ${email}`,
+        organization.id,
+        user.id,
+        req?.ip,
+        req?.get('user-agent'),
+        { email, role: user.role }
+      );
+
+      this.logger.log(`User registered successfully: ${email}`);
+
+      return {
+        message: 'User registered successfully',
+        user,
+      };
+    } catch (error) {
+      this.logger.error('Registration failed:', error);
+      throw error;
+    }
+  }
+
+  async login(loginDto: LoginDto, req) {
+    const { email, password } = loginDto;
+
+    try {
+      // Validate input
+      if (!email || !password) {
+        throw new BadRequestException('Email and password are required');
+      }
+
+      // Find user
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.WARNING,
+          `Login attempt with non-existent email: ${email}`,
+          'unknown',
+          undefined,
+          req?.ip,
+          req?.get('user-agent'),
+          { email, success: false, reason: 'User not found' }
+        );
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      // Check if user is active
+      if (user.status !== 'ACTIVE') {
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.WARNING,
+          `Login attempt with inactive account: ${email}`,
+          user.organizationId,
+          user.id,
+          req?.ip,
+          req?.get('user-agent'),
+          { email, status: user.status, success: false, reason: 'Account inactive' }
+        );
+        throw new UnauthorizedException('Account is not active');
+      }
+
+      // Check if account is locked
+      if (user.lockedUntil && user.lockedUntil > new Date()) {
+        const remainingTime = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.ERROR,
+          `Login attempt on locked account: ${email}`,
+          user.organizationId,
+          user.id,
+          req?.ip,
+          req?.get('user-agent'),
+          { email, failedAttempts: user.failedLoginAttempts, lockedUntil: user.lockedUntil }
+        );
+        throw new UnauthorizedException(`Account is locked. Try again in ${remainingTime} minutes.`);
+      }
+
+      // Verify password using Argon2
+      const isPasswordValid = await argon2.verify(user.password, password);
+
+      if (!isPasswordValid) {
+        // Increment failed login attempts
+        const failedAttempts = user.failedLoginAttempts + 1;
+        const shouldLock = failedAttempts >= 5;
+        const lockDuration = shouldLock ? 15 * 60 * 1000 : 0; // 15 minutes
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: failedAttempts,
+            lockedUntil: shouldLock ? new Date(Date.now() + lockDuration) : null,
+          },
+        });
+
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.ERROR,
+          `Failed login attempt: ${email}`,
+          user.organizationId,
+          user.id,
+          req?.ip,
+          req?.get('user-agent'),
+          { 
+            email, 
+            success: false, 
+            reason: 'Invalid password',
+            failedAttempts,
+            accountLocked: shouldLock
+          }
+        );
+
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      // Reset failed login attempts on successful login
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+          lastLoginIp: req?.ip,
+          lastLoginDevice: req?.get('user-agent'),
+        },
+      });
+
+      // Create session
+      const session = await this.prisma.session.create({
+        data: {
+          userId: user.id,
+          ipAddress: req?.ip,
+          userAgent: req?.get('user-agent'),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        },
+      });
+
+      // Generate JWT tokens with proper expiration
+      const accessToken = this.jwtService.sign({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
+        sessionId: session.id,
+      }, {
+        expiresIn: '15m',
+      });
+
+      const refreshTokenString = uuidv4();
+      const hashedRefreshToken = await argon2.hash(refreshTokenString);
+
+      // Revoke all existing refresh tokens for this user
+      await this.prisma.refreshToken.updateMany({
+        where: { 
+          userId: user.id,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      // Create new refresh token
+      await this.prisma.refreshToken.create({
+        data: {
+          token: hashedRefreshToken,
+          userId: user.id,
+          sessionId: session.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+
+      // Create audit log
+      await this.createAuditLog(
+        AuditAction.AUTH_LOGIN,
+        AuditSeverity.INFO,
+        `Successful login: ${email}`,
+        user.organizationId,
+        user.id,
+        req?.ip,
+        req?.get('user-agent'),
+        { 
+          sessionId: session.id,
+          userAgent: req?.get('user-agent')
+        }
+      );
+
+      this.logger.log(`User logged in successfully: ${email}`);
+
+      return {
+        accessToken,
+        refreshToken: refreshTokenString,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          organizationId: user.organizationId,
+          avatar: user.avatar,
+          status: user.status,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Login failed:', error);
+      throw error;
+    }
+  }
+
+  async refreshToken(refreshToken: string, req) {
+    try {
+      if (!refreshToken) {
+        throw new UnauthorizedException('No refresh token provided');
+      }
+
+      // Find valid refresh token
+      const storedTokens = await this.prisma.refreshToken.findMany({
+        where: {
+          expiresAt: { gt: new Date() },
+          revokedAt: null,
+        },
+        include: {
+          user: true,
+          session: true,
+        },
+      });
+
+      let validToken = null;
+      let userId: string;
+
+      for (const token of storedTokens) {
+        const isValid = await argon2.verify(token.token, refreshToken);
+        if (isValid) {
+          validToken = token;
+          userId = token.userId;
+          break;
+        }
+      }
+
+      if (!validToken) {
+        // Log security event
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.ERROR,
+          'Invalid refresh token attempt',
+          'unknown',
+          undefined,
+          req?.ip,
+          req?.get('user-agent'),
+          { success: false, reason: 'Invalid refresh token' }
+        );
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Check if user is still active
+      if (validToken.user.status !== 'ACTIVE') {
+        await this.createAuditLog(
+          AuditAction.AUTH_LOGIN_FAILED,
+          AuditSeverity.WARNING,
+          'Refresh token attempt with inactive user',
+          validToken.user.organizationId,
+          validToken.user.id,
+          req?.ip,
+          req?.get('user-agent'),
+          { status: validToken.user.status, success: false }
+        );
+        throw new UnauthorizedException('User account is not active');
+      }
+
+      // Revoke old token
+      await this.prisma.refreshToken.update({
+        where: { id: validToken.id },
+        data: { revokedAt: new Date() },
+      });
+
+      // Update session activity
+      if (validToken.sessionId) {
+        await this.prisma.session.update({
+          where: { id: validToken.sessionId },
+          data: { lastActivityAt: new Date() },
+        });
+      }
+
+      // Generate new access token
+      const accessToken = this.jwtService.sign({
+        id: validToken.user.id,
+        email: validToken.user.email,
+        role: validToken.user.role,
+        organizationId: validToken.user.organizationId,
+        sessionId: validToken.sessionId,
+      }, {
+        expiresIn: '15m',
+      });
+
+      const newRefreshTokenString = uuidv4();
+      const hashedNewRefreshToken = await argon2.hash(newRefreshTokenString);
+
+      // Create new refresh token
+      await this.prisma.refreshToken.create({
+        data: {
+          token: hashedNewRefreshToken,
+          userId: validToken.user.id,
+          sessionId: validToken.sessionId,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+
+      // Create audit log
+      await this.createAuditLog(
+        AuditAction.AUTH_LOGIN,
+        AuditSeverity.INFO,
+        'Token refreshed successfully',
+        validToken.user.organizationId,
+        validToken.user.id,
+        req?.ip,
+        req?.get('user-agent'),
+        { sessionId: validToken.sessionId }
+      );
+
+      this.logger.log(`Token refreshed for user: ${validToken.user.email}`);
+
+      return {
+        accessToken,
+        refreshToken: newRefreshTokenString,
+      };
+    } catch (error) {
+      this.logger.error('Token refresh failed:', error);
+      throw error;
+    }
+  }
+
+  async logout(userId: string, req) {
+    try {
+      // Get user details
+      const user = await this.usersService.findById(userId);
+
+      // Revoke all refresh tokens for this user
+      await this.prisma.refreshToken.updateMany({
+        where: { 
+          userId,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      // Update sessions to mark as logged out
+      await this.prisma.session.updateMany({
+        where: { 
+          userId,
+          expiresAt: { gt: new Date() },
+        },
+        data: { 
+          lastActivityAt: new Date(),
+        },
+      });
+
+      // Create audit log
+      await this.createAuditLog(
+        AuditAction.AUTH_LOGOUT,
+        AuditSeverity.INFO,
+        `User logged out: ${user.email}`,
+        user.organizationId,
+        userId,
+        req?.ip,
+        req?.get('user-agent'),
+        {}
+      );
+
+      this.logger.log(`User logged out: ${user.email}`);
+      
+      return { message: 'Logged out successfully' };
+    } catch (error) {
+      this.logger.error('Logout failed:', error);
+      throw error;
+    }
+  }
+
+  async forgotPassword(email: string) {
+    try {
+      // Find user by email
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        // For security, don't reveal if email exists or not
+        this.logger.log(`Password reset requested for non-existent email: ${email}`);
+        return { message: 'If an account with this email exists, a password reset link has been sent.' };
+      }
+
+      // Generate a reset token (in a real app, this would be a secure token with expiry)
+      const resetToken = uuidv4();
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store reset token in database (you'd need to add this field to the user model)
+      // For now, we'll just log it (in production, you'd send an email)
+      this.logger.log(`Password reset token generated for user: ${user.email}, token: ${resetToken}`);
+
+      // Create audit log
+      await this.createAuditLog(
+        AuditAction.AUTH_PASSWORD_CHANGED,
+        AuditSeverity.INFO,
+        `Password reset requested: ${email}`,
+        user.organizationId,
+        user.id,
+        'system',
+        'system',
+        { resetToken, expiry: resetTokenExpiry }
+      );
+
+      // In a real implementation, you would send an email here
+      // For demo purposes, we'll just return success
+      return { 
+        message: 'If an account with this email exists, a password reset link has been sent.',
+        // For demo: include the reset token (remove in production)
+        ...(process.env.NODE_ENV === 'development' && { resetToken })
+      };
+    } catch (error) {
+      this.logger.error('Forgot password failed:', error);
+      throw error;
+    }
+  }
+
+  async getCurrentUser(userId: string) {
+    return this.usersService.findById(userId);
+  }
+}
