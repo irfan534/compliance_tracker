@@ -15,14 +15,17 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Security
-  app.use(helmet());
+  const isDev = process.env.NODE_ENV === 'development';
+  app.use(helmet({
+    crossOriginResourcePolicy: isDev ? false : { policy: 'same-origin' },
+  }));
   app.use(compression());
   app.use(cookieParser());
   app.use(new SecurityHeadersMiddleware().use.bind(new SecurityHeadersMiddleware()));
 
   // CORS
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: isDev ? true : (process.env.CORS_ORIGIN || 'http://localhost:3000'),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],

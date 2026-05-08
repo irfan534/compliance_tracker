@@ -1,0 +1,19 @@
+name,certificateId,certificateType,issueDate,expiryDate,validityDays,issuingBody,owner,department,description,status,renewalStatus
+ISO 27001:2013 Information Security Management,ISO27001-2024-001,ISO 27001,2022-01-15,2025-01-15,1095,British Standards Institute (BSI),Compliance Manager,Information Security,Comprehensive information security management system certification,ACTIVE,ACTIVE
+SOC 2 Type II - Security,SOC2-2024-001,SOC 2,2023-06-01,2025-06-01,730,Deloitte & Touche LLP,Compliance Officer,Compliance,Service organization control with security criteria,ACTIVE,ACTIVE
+GDPR Compliance Certification,GDPR-2024-001,GDPR,2023-03-20,2025-03-20,730,European Data Protection Board,Risk Manager,Data Privacy,General Data Protection Regulation compliance certification,ACTIVE,ACTIVE
+HIPAA Security Rule Compliance,HIPAA-2024-001,HIPAA,2022-09-10,2025-09-10,1095,Health and Human Services (HHS),Compliance Manager,Healthcare Compliance,HIPAA Security Rule and Privacy Rule compliance,ACTIVE,ACTIVE
+PCI DSS Level 1 Compliance,PCIDSS-2024-001,PCI DSS,2023-12-01,2024-12-01,365,Qualified Security Assessor (QSA),Auditor,Payment Security,PCI DSS Level 1 merchant compliance certification,EXPIRING_SOON,RENEWAL_DUE
+ISO 9001:2015 Quality Management,ISO9001-2024-002,ISO 9001,2022-02-28,2025-02-28,1095,International Organization for Standardization,Quality Manager,Quality Assurance,Quality management system certification,ACTIVE,ACTIVE
+SOC 2 Type II - Availability,SOC2-2024-002,SOC 2,2023-07-15,2025-07-15,730,KPMG LLP,Compliance Officer,Compliance,SOC 2 Type II with availability criteria,ACTIVE,ACTIVE
+GDPR Binding Corporate Rules,BCR-2024-001,GDPR,2023-01-10,2024-12-31,725,Irish Data Protection Commissioner,Risk Manager,Data Privacy,Binding corporate rules for data transfer within corporate group,EXPIRING_SOON,RENEWAL_DUE
+HIPAA Privacy Rule Compliance,HIPAA-2024-002,HIPAA,2021-11-20,2024-11-20,1095,U.S. Department of Health and Human Services,Compliance Manager,Healthcare Compliance,HIPAA Privacy Rule compliance certification,ACTIVE,ACTIVE
+PCI DSS Level 2 Compliance,PCIDSS-2024-002,PCI DSS,2023-08-15,2024-08-15,365,Trustwave,Auditor,Payment Security,PCI DSS Level 2 merchant compliance certification,EXPIRED,LAPSED
+ISO 22301:2018 Information Security,ISO22301-2024-001,ISO 22301,2022-05-20,2025-05-20,1095,Bureau Veritas,Compliance Officer,Information Security,Information security management system certification,ACTIVE,ACTIVE
+SOC 2 Type II - Confidentiality,SOC2-2024-003,SOC 2,2023-09-01,2025-09-01,730,Ernst & Young LLP,Compliance Manager,Compliance,SOC 2 Type II with confidentiality criteria,ACTIVE,ACTIVE
+GDPR Article 35 Data Protection by Design,DPO-2024-001,GDPR,2023-04-05,2025-04-05,730,French Data Protection Authority,Data Privacy Officer,Data Privacy,Data protection by design and by default certification,ACTIVE,ACTIVE
+HITECH/HIPAA Security Certification,HITECH-2024-001,HIPAA,2022-07-01,2025-07-01,1095,Office of the National Coordinator for Health IT,Compliance Manager,Healthcare Compliance,HIPAA and HITECH security certification,ACTIVE,ACTIVE
+PCI DSS Service Provider Level 1,PCIDSS-2024-003,PCI DSS,2023-10-01,2024-10-01,365,Schellman & Company LLC,Auditor,Payment Security,PCI DSS Service Provider Level 1 compliance,EXPIRING_SOON,RENEWAL_DUE
+ISO 27001:2017 Information Security,ISO27001-2024-003,ISO 27001,2021-12-15,2024-12-15,1095,SGS,Compliance Officer,Information Security,Information security management system certification,EXPIRING_SOON,RENEWAL_IN_PROGRESS
+SOC 2 Type II - Processing Integrity,SOC2-2024-004,SOC 2,2023-11-20,2025-11-20,730,Grant Thornton LLP,Compliance Manager,Compliance,SOC 2 Type II with processing integrity criteria,ACTIVE,ACTIVE
+GDPR UK Data Protection Act,DPA-2024-001,GDPR,2023-02-28,2025-02-28,730,Information Commissioner's Office,Risk Manager,Data Privacy,UK Data Protection Act compliance certification,ACTIVE,ACTIVE

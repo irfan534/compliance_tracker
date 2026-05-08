@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCertifications } from '@/lib/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDate, getDaysUntilExpiry } from '@/lib/utils';
 import Button from '@/components/ui/button';
 import AddCertificationDialog from '@/components/certifications/add-certification-dialog';
@@ -12,8 +13,13 @@ export default function CertificationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
+  const queryClient = useQueryClient();
+
   const { data: certificationsData, isLoading, error } = useCertifications();
+
+  const handleCertificationAdded = () => {
+    queryClient.invalidateQueries({ queryKey: ['certifications'] });
+  };
 
   const filteredCertifications = certificationsData?.certifications?.filter((cert: any) => {
     const matchesSearch = cert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,7 +60,7 @@ export default function CertificationsPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <AddCertificationDialog>
+          <AddCertificationDialog onSuccess={handleCertificationAdded}>
             <Button className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add Certification
@@ -159,7 +165,7 @@ export default function CertificationsPage() {
           >
             <Award className="w-6 h-6 text-green-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">24</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsData?.certifications?.length || 0}</div>
           <div className="text-sm text-muted-foreground">Total Certifications</div>
         </motion.div>
         
@@ -178,7 +184,7 @@ export default function CertificationsPage() {
           >
             <CheckCircle className="w-6 h-6 text-blue-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">18</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsData?.certifications?.filter((cert: any) => cert.status === 'ACTIVE').length || 0}</div>
           <div className="text-sm text-muted-foreground">Active</div>
         </motion.div>
         
@@ -197,7 +203,7 @@ export default function CertificationsPage() {
           >
             <Clock className="w-6 h-6 text-yellow-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">3</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsData?.certifications?.filter((cert: any) => cert.status === 'EXPIRING_SOON').length || 0}</div>
           <div className="text-sm text-muted-foreground">Expiring Soon</div>
         </motion.div>
         
@@ -216,7 +222,7 @@ export default function CertificationsPage() {
           >
             <AlertTriangle className="w-6 h-6 text-red-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">2</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsData?.certifications?.filter((cert: any) => cert.status === 'EXPIRED').length || 0}</div>
           <div className="text-sm text-muted-foreground">Expired</div>
         </motion.div>
       </div>
@@ -282,7 +288,14 @@ export default function CertificationsPage() {
       {/* Error State */}
       {error && (
         <div className="glass p-6 text-center">
-          <p className="text-red-600">Error loading certifications. Please try again.</p>
+          <p className="text-red-600">Error loading certifications: {error.message || 'Please try again.'}</p>
+          <Button
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['certifications'] })}
+            className="mt-4"
+            variant="outline"
+          >
+            Retry
+          </Button>
         </div>
       )}
 
@@ -446,7 +459,7 @@ export default function CertificationsPage() {
               ? 'Try adjusting your search or filters' 
               : 'Get started by adding your first certification'}
           </p>
-          <AddCertificationDialog>
+          <AddCertificationDialog onSuccess={handleCertificationAdded}>
             <Button className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add Certification

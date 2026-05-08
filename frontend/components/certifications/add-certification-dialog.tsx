@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Button from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { Plus } from 'lucide-react';
+import { useCreateCertification } from '@/lib/hooks';
 
 interface CertificationFormData {
   name: string;
@@ -23,7 +24,6 @@ interface AddCertificationDialogProps {
 
 export default function AddCertificationDialog({ children, onSuccess }: AddCertificationDialogProps) {
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CertificationFormData>({
     name: '',
     issueDate: '',
@@ -34,36 +34,52 @@ export default function AddCertificationDialog({ children, onSuccess }: AddCerti
     logo: undefined,
   });
 
+  const createCertification = useCreateCertification();
+  const isLoading = createCertification.isPending;
+
   const handleInputChange = (field: keyof CertificationFormData, value: string | File) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    try {
-      // TODO: Implement API call to create certification
-      console.log('Creating certification:', formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setOpen(false);
-      setFormData({
-        name: '',
-        issueDate: '',
-        expiryDate: '',
-        issuingBody: '',
-        owner: '',
-        description: '',
-        logo: undefined,
-      });
-      onSuccess?.();
-    } catch (error) {
-      console.error('Error creating certification:', error);
-    } finally {
-      setIsLoading(false);
-    }
+
+    // Calculate validity days
+    const issueDate = new Date(formData.issueDate);
+    const expiryDate = new Date(formData.expiryDate);
+    const validityDays = Math.floor((expiryDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    const certificationData = {
+      name: formData.name,
+      certificateType: 'Custom',
+      issueDate: formData.issueDate,
+      expiryDate: formData.expiryDate,
+      validityDays: validityDays,
+      issuingBody: formData.issuingBody,
+      owner: formData.owner,
+      description: formData.description,
+    };
+
+    createCertification.mutate(certificationData, {
+      onSuccess: () => {
+        setOpen(false);
+        setFormData({
+          name: '',
+          issueDate: '',
+          expiryDate: '',
+          issuingBody: '',
+          owner: '',
+          description: '',
+          logo: undefined,
+        });
+        onSuccess?.();
+        alert('Certification added successfully!');
+      },
+      onError: (error: any) => {
+        console.error('Error creating certification:', error);
+        alert(`Failed to add certification: ${error.response?.data?.message || error.message}`);
+      },
+    });
   };
 
   return (

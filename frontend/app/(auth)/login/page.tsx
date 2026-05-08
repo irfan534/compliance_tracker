@@ -25,28 +25,44 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('Attempting login with:', email);
       const response = await loginMutation.mutateAsync({ email, password });
-      
+      console.log('Login response:', response);
+
       const { accessToken, user } = response.data;
-      
+      console.log('Access token:', accessToken);
+      console.log('User:', user);
+
       // Store tokens and user
-      Cookies.set('accessToken', accessToken, { 
-        secure: true,
-        sameSite: 'strict',
+      Cookies.set('accessToken', accessToken, {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', // Changed from 'strict' to 'lax' for better compatibility
       });
-      
+
+      console.log('Cookie set successfully');
+
       setUser(user);
       setAccessToken(accessToken);
-      
+
+      console.log('Redirecting to dashboard...');
       router.push('/dashboard');
     } catch (err: any) {
+      console.error('Login error:', err);
+      console.error('Error response:', err.response);
+      console.error('Error message:', err.message);
       setError(
-        err.response?.data?.message || 
+        err.response?.data?.message ||
+        err.message ||
         'Login failed. Please check your credentials.'
       );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFillDemo = () => {
+    setEmail('admin@tracker.local');
+    setPassword('Demo@123456');
   };
 
   return (
@@ -126,6 +142,14 @@ export default function LoginPage() {
           </div>
 
           <div className="pt-4 border-t border-border">
+            <button
+              type="button"
+              onClick={handleFillDemo}
+              className="w-full py-2 px-4 text-sm text-accent hover:bg-accent/10 rounded-lg transition-smooth mb-2"
+              disabled={loading}
+            >
+              Fill Demo Credentials
+            </button>
             <p className="text-xs text-muted-foreground text-center">
               Demo credentials: admin@tracker.local / Demo@123456
             </p>

@@ -5,6 +5,7 @@ import { useCertificationMetrics, useFrameworkMetrics, useCertifications, useCom
 import { formatDate } from '@/lib/utils';
 import { BarChart3, Award, CheckCircle, Clock, AlertTriangle, Shield, TrendingUp, Target, Activity, Zap, ArrowRight } from 'lucide-react';
 
+// Use dynamic metrics from API instead of hardcoded values
 const metricCards = [
   { label: 'Total Certifications', key: 'totalCertifications' },
   { label: 'Active Certifications', key: 'activeCertifications' },
@@ -116,7 +117,7 @@ export default function Dashboard() {
           >
             <BarChart3 className="w-6 h-6 text-blue-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">24</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsQuery.data?.certifications?.length || 0}</div>
           <div className="text-sm text-muted-foreground">Total Certifications</div>
         </motion.div>
         
@@ -135,7 +136,7 @@ export default function Dashboard() {
           >
             <CheckCircle className="w-6 h-6 text-green-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">18</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsQuery.data?.certifications?.filter((cert: any) => cert.status === 'ACTIVE').length || 0}</div>
           <div className="text-sm text-muted-foreground">Active</div>
         </motion.div>
         
@@ -154,7 +155,7 @@ export default function Dashboard() {
           >
             <Clock className="w-6 h-6 text-yellow-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">3</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsQuery.data?.certifications?.filter((cert: any) => cert.status === 'EXPIRING_SOON').length || 0}</div>
           <div className="text-sm text-muted-foreground">Expiring Soon</div>
         </motion.div>
         
@@ -173,7 +174,7 @@ export default function Dashboard() {
           >
             <AlertTriangle className="w-6 h-6 text-red-600" />
           </motion.div>
-          <div className="text-2xl font-bold text-foreground">2</div>
+          <div className="text-2xl font-bold text-foreground">{certificationsQuery.data?.certifications?.filter((cert: any) => cert.status === 'EXPIRED').length || 0}</div>
           <div className="text-sm text-muted-foreground">Expired</div>
         </motion.div>
       </div>

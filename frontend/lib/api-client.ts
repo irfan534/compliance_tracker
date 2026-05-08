@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api';
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -40,7 +40,10 @@ class ApiClient {
           try {
             const response = await this.instance.post('/auth/refresh');
             const { accessToken } = response.data;
-            Cookies.set('accessToken', accessToken);
+            Cookies.set('accessToken', accessToken, {
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            });
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             return this.instance(originalRequest);
           } catch (refreshError) {

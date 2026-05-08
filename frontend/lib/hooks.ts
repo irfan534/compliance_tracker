@@ -80,17 +80,21 @@ export const useFrameworkMetrics = () => {
 };
 
 // Reports hooks
-export const useExpiryReport = () => {
+export const useExpiryReport = (enabled = false) => {
   return useQuery({
     queryKey: ['reports', 'expiry'],
     queryFn: () => apiClient.get('/reports/expiry-forecast').then((res) => res.data),
+    enabled,
+    retry: 1,
   });
 };
 
-export const useComplianceReport = () => {
+export const useComplianceReport = (enabled = false) => {
   return useQuery({
     queryKey: ['reports', 'compliance'],
     queryFn: () => apiClient.get('/reports/compliance-status').then((res) => res.data),
+    enabled,
+    retry: 1,
   });
 };
 

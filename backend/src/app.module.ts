@@ -6,6 +6,7 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CertificationsModule } from './certifications/certifications.module';
+import { CompaniesModule } from './companies/companies.module';
 import { FrameworksModule } from './frameworks/frameworks.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { ReportsModule } from './reports/reports.module';
@@ -30,6 +31,7 @@ import { AppService } from './app.service';
     AuthModule,
     UsersModule,
     CertificationsModule,
+    CompaniesModule,
     FrameworksModule,
     UploadsModule,
     ReportsModule,

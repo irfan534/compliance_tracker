@@ -4,14 +4,25 @@ import { Request, Response, NextFunction } from 'express';
 @Injectable()
 export class SecurityHeadersMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    // Content Security Policy
-    res.setHeader(
-      'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.tracker.local",
-    );
+    const isDev = process.env.NODE_ENV === 'development';
 
-    // HTTP Strict Transport Security
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    // Content Security Policy - more permissive in development
+    if (isDev) {
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* https:;",
+      );
+    } else {
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.tracker.local",
+      );
+    }
+
+    // HTTP Strict Transport Security - only in production
+    if (!isDev) {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
 
     // X-Frame-Options
     res.setHeader('X-Frame-Options', 'DENY');

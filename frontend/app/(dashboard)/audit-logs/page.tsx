@@ -241,7 +241,7 @@ export default function AuditLogsPage() {
               >
                 <FileText className="w-6 h-6 text-orange-600" />
               </motion.div>
-              <div className="text-2xl font-bold text-foreground">1,247</div>
+              <div className="text-2xl font-bold text-foreground">{logs.length}</div>
               <div className="text-sm text-muted-foreground">Total Logs</div>
             </motion.div>
             
@@ -260,7 +260,7 @@ export default function AuditLogsPage() {
               >
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </motion.div>
-              <div className="text-2xl font-bold text-foreground">23</div>
+              <div className="text-2xl font-bold text-foreground">{logs.filter((log: any) => log.severity === 'CRITICAL').length}</div>
               <div className="text-sm text-muted-foreground">Critical Events</div>
             </motion.div>
             
@@ -279,7 +279,11 @@ export default function AuditLogsPage() {
               >
                 <Clock className="w-6 h-6 text-yellow-600" />
               </motion.div>
-              <div className="text-2xl font-bold text-foreground">156</div>
+              <div className="text-2xl font-bold text-foreground">{logs.filter((log: any) => {
+                const logDate = new Date(log.createdAt);
+                const today = new Date();
+                return logDate.toDateString() === today.toDateString();
+              }).length}</div>
               <div className="text-sm text-muted-foreground">Today's Activity</div>
             </motion.div>
             
@@ -298,7 +302,7 @@ export default function AuditLogsPage() {
               >
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </motion.div>
-              <div className="text-2xl font-bold text-foreground">89%</div>
+              <div className="text-2xl font-bold text-foreground">{logs.length > 0 ? Math.round((logs.filter((log: any) => log.severity !== 'CRITICAL').length / logs.length) * 100) : 0}%</div>
               <div className="text-sm text-muted-foreground">Security Score</div>
             </motion.div>
           </div>
