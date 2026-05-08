@@ -176,15 +176,75 @@ export default function CompaniesPage() {
     return (
       <div className="min-h-screen bg-white p-6">
         <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="h-12 bg-gray-200 rounded mb-6"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-center min-h-[60vh]"
+          >
+            {/* Loading Spinner */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 mb-8"
+            >
+              <div className="w-full h-full rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+            </motion.div>
+            
+            {/* Loading Text */}
+            <motion.h2
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl font-semibold text-gray-900 mb-2"
+            >
+              Loading Companies
+            </motion.h2>
+            
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-gray-600 mb-8"
+            >
+              Fetching company data and compliance information...
+            </motion.p>
+            
+            {/* Progress Bar */}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 3, ease: "easeInOut" }}
+              className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden mb-8"
+            >
+              <div className="h-full bg-blue-600 rounded-full"></div>
+            </motion.div>
+            
+            {/* Skeleton Cards with Staggered Animation */}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-64 bg-gray-200 rounded-lg"></div>
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 * i }}
+                  className="animate-pulse"
+                >
+                  <div className="h-64 bg-gray-200 rounded-lg">
+                    <div className="p-6">
+                      <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
+                      <div className="h-4 bg-gray-300 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-300 rounded w-2/3 mb-4"></div>
+                      <div className="flex justify-between mt-8">
+                        <div className="h-8 bg-gray-300 rounded w-20"></div>
+                        <div className="h-8 bg-gray-300 rounded w-20"></div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -641,23 +701,116 @@ export default function CompaniesPage() {
                       </Button>
                     </div>
                     {selectedCompany.certifications && selectedCompany.certifications.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedCompany.certifications.map((cert: any) => (
-                          <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium text-gray-900">{cert.name}</p>
-                              <p className="text-sm text-gray-600">{cert.certificateType}</p>
+                      <div className="space-y-4">
+                        {selectedCompany.certifications.map((cert: any) => {
+                          const expiryDate = new Date(cert.expiryDate);
+                          const today = new Date();
+                          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+                          const isExpired = daysUntilExpiry <= 0;
+
+                          return (
+                            <div key={cert.id} className="border rounded-lg p-4 bg-gray-50">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h5 className="font-semibold text-gray-900">{cert.name}</h5>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      isExpired ? 'text-red-600 bg-red-50' :
+                                      isExpiringSoon ? 'text-yellow-600 bg-yellow-50' :
+                                      getStatusColor(cert.status)
+                                    }`}>
+                                      {isExpired ? 'EXPIRED' : isExpiringSoon ? 'EXPIRING SOON' : cert.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 mb-2">{cert.certificateType}</p>
+                                  {cert.description && (
+                                    <p className="text-sm text-gray-500 mb-3">{cert.description}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button size="sm" variant="ghost">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="font-medium text-gray-700">Certificate ID:</span>
+                                    <span className="ml-2 text-gray-600">{cert.certificateId}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-700">Issuing Body:</span>
+                                    <span className="ml-2 text-gray-600">{cert.issuingBody}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-700">Owner:</span>
+                                    <span className="ml-2 text-gray-600">{cert.owner || 'Not assigned'}</span>
+                                  </div>
+                                  {cert.department && (
+                                    <div>
+                                      <span className="font-medium text-gray-700">Department:</span>
+                                      <span className="ml-2 text-gray-600">{cert.department}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="font-medium text-gray-700">Issue Date:</span>
+                                    <span className="ml-2 text-gray-600">{new Date(cert.issueDate).toLocaleDateString()}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-700">Expiry Date:</span>
+                                    <span className={`ml-2 ${isExpired ? 'text-red-600 font-semibold' : isExpiringSoon ? 'text-yellow-600 font-semibold' : 'text-gray-600'}`}>
+                                      {expiryDate.toLocaleDateString()}
+                                      {isExpired && ' (Expired)'}
+                                      {isExpiringSoon && ` (${daysUntilExpiry} days)`}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-700">Validity Period:</span>
+                                    <span className="ml-2 text-gray-600">{cert.validityDays} days</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-700">Renewal Reminder:</span>
+                                    <span className="ml-2 text-gray-600">{cert.renewalReminderDays} days before</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {cert.user && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <span className="font-medium text-gray-700 text-sm">Assigned to:</span>
+                                  <span className="ml-2 text-sm text-gray-600">
+                                    {cert.user.firstName} {cert.user.lastName} ({cert.user.email})
+                                  </span>
+                                </div>
+                              )}
+
+                              {cert.evidenceUrls && cert.evidenceUrls.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <span className="font-medium text-gray-700 text-sm">Evidence Documents:</span>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {cert.evidenceUrls.map((url: string, index: number) => (
+                                      <a
+                                        key={index}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:underline"
+                                      >
+                                        Document {index + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cert.status)}`}>
-                                {cert.status}
-                              </span>
-                              <Button size="sm" variant="ghost">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500 text-center py-4">No certifications assigned</p>

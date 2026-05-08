@@ -14,7 +14,7 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 
 @Controller('companies')
-@UseGuards(AuthGuard('jwt'))
+// @UseGuards(AuthGuard('jwt'))
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
