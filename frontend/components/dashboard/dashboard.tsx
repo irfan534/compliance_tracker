@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useCertificationMetrics, useFrameworkMetrics, useCertifications, useComplianceReport } from '@/lib/hooks';
 import { formatDate } from '@/lib/utils';
+import { BarChart3, Award, CheckCircle, Clock, AlertTriangle, Shield, TrendingUp, Target, Activity, Zap, ArrowRight } from 'lucide-react';
 
 const metricCards = [
   { label: 'Total Certifications', key: 'totalCertifications' },
@@ -19,21 +20,199 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-6 xl:grid-cols-5 lg:grid-cols-3 md:grid-cols-2">
-        {metricCards.map((metric, index) => (
+      {/* Dashboard Overview Feature Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="glass p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
+      >
+        <div className="flex items-center gap-4">
           <motion.div
-            key={metric.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="glass p-6"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"
           >
-            <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-            <p className="mt-4 text-3xl font-semibold text-foreground">
-              {metricsQuery.isLoading ? '—' : metricsQuery.data?.[metric.key] ?? 0}
-            </p>
+            <BarChart3 className="w-6 h-6 text-blue-600" />
           </motion.div>
-        ))}
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-blue-900 mb-1">Compliance Intelligence Dashboard</h3>
+            <p className="text-blue-700 text-sm mb-3">
+              Real-time insights into your certification status and framework coverage
+            </p>
+            
+            {/* Dashboard Analytics Flow Visualization */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-blue-200 shadow-sm"
+              >
+                <Target className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-medium text-blue-800">Track Metrics</span>
+              </motion.div>
+              
+              <motion.div
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <ArrowRight className="w-4 h-4 text-blue-400" />
+              </motion.div>
+              
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-indigo-200 shadow-sm"
+              >
+                <Activity className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-medium text-indigo-800">Analyze Trends</span>
+              </motion.div>
+              
+              <motion.div
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+              >
+                <ArrowRight className="w-4 h-4 text-indigo-400" />
+              </motion.div>
+              
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-green-200 shadow-sm"
+              >
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-medium text-green-800">Drive Decisions</span>
+              </motion.div>
+            </div>
+          </div>
+          
+          <motion.div
+            animate={{ 
+              rotate: [0, 15, -15, 0],
+            }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="hidden md:block"
+          >
+            <Zap className="w-8 h-8 text-blue-400" />
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Quick Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="glass p-6 text-center"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+          >
+            <BarChart3 className="w-6 h-6 text-blue-600" />
+          </motion.div>
+          <div className="text-2xl font-bold text-foreground">24</div>
+          <div className="text-sm text-muted-foreground">Total Certifications</div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="glass p-6 text-center"
+        >
+          <motion.div
+            animate={{ 
+              scale: [1, 1.2, 1],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+          >
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </motion.div>
+          <div className="text-2xl font-bold text-foreground">18</div>
+          <div className="text-sm text-muted-foreground">Active</div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="glass p-6 text-center"
+        >
+          <motion.div
+            animate={{ 
+              y: [0, -5, 0],
+            }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+          >
+            <Clock className="w-6 h-6 text-yellow-600" />
+          </motion.div>
+          <div className="text-2xl font-bold text-foreground">3</div>
+          <div className="text-sm text-muted-foreground">Expiring Soon</div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="glass p-6 text-center"
+        >
+          <motion.div
+            animate={{ 
+              opacity: [1, 0.5, 1],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+          >
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </motion.div>
+          <div className="text-2xl font-bold text-foreground">2</div>
+          <div className="text-sm text-muted-foreground">Expired</div>
+        </motion.div>
+      </div>
+
+      <section className="grid gap-6 xl:grid-cols-5 lg:grid-cols-3 md:grid-cols-2">
+        {metricCards.map((metric, index) => {
+          const getIconAndColor = (key: string) => {
+            switch (key) {
+              case 'totalCertifications': return { icon: Award, color: 'text-green-600 bg-green-100' };
+              case 'activeCertifications': return { icon: CheckCircle, color: 'text-blue-600 bg-blue-100' };
+              case 'expiringSoon': return { icon: Clock, color: 'text-yellow-600 bg-yellow-100' };
+              case 'expired': return { icon: AlertTriangle, color: 'text-red-600 bg-red-100' };
+              case 'totalCompanies': return { icon: Shield, color: 'text-purple-600 bg-purple-100' };
+              default: return { icon: BarChart3, color: 'text-gray-600 bg-gray-100' };
+            }
+          };
+          
+          const { icon: Icon, color } = getIconAndColor(metric.key);
+          
+          return (
+            <motion.div
+              key={metric.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="glass p-6 hover-lift"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-3xl font-semibold text-foreground">
+                {metricsQuery.isLoading ? '—' : metricsQuery.data?.[metric.key] ?? 0}
+              </p>
+            </motion.div>
+          );
+        })}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
@@ -43,23 +222,30 @@ export default function Dashboard() {
               <h2 className="text-lg font-semibold text-foreground">Expiry Trend</h2>
               <p className="text-sm text-muted-foreground">Monitor certificate renewals and expiration risk.</p>
             </div>
+            <motion.div
+              animate={{ 
+                y: [0, -3, 0],
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <TrendingUp className="w-5 h-5 text-blue-500" />
+            </motion.div>
           </div>
-          <div className="h-72 rounded-3xl bg-slate-950/5 p-4">Chart placeholder</div>
+          <div className="h-72 rounded-3xl bg-slate-950/5 p-4 flex items-center justify-center">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.05, 1],
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="text-center"
+            >
+              <BarChart3 className="w-12 h-12 text-blue-400 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Interactive Chart Placeholder</p>
+            </motion.div>
+          </div>
         </motion.div>
 
-        <motion.div className="glass p-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
-            <p className="text-sm text-muted-foreground">Current framework coverage and score.</p>
-          </div>
-          <div className="rounded-3xl bg-slate-950/5 p-6">
-            <p className="text-5xl font-semibold text-foreground">
-              {frameworkMetricsQuery.isLoading ? '—' : `${frameworkMetricsQuery.data?.avgCompliance ?? 0}%`}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Average coverage across frameworks.</p>
-          </div>
-        </motion.div>
-      </section>
+              </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <motion.div className="glass p-6">
@@ -90,14 +276,7 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
           </div>
           <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-foreground">Audit log synced</p>
-              <p className="text-xs text-muted-foreground">Tracker recorded a security event at 09:42</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 p-4">
-              <p className="text-sm font-semibold text-foreground">Excel import completed</p>
-              <p className="text-xs text-muted-foreground">Certification data refreshed from upload.</p>
-            </div>
+            <p className="text-sm text-muted-foreground">No recent activity to display.</p>
           </div>
         </motion.div>
       </section>

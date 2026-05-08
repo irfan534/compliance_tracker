@@ -10,7 +10,7 @@ const navItems = [
   { label: 'Certifications', href: '/certifications', icon: Award, category: 'main' },
   { label: 'Frameworks', href: '/frameworks', icon: ShieldCheck, category: 'main' },
   { label: 'Reports', href: '/reports', icon: BarChart3, category: 'main' },
-  { label: 'Uploads', href: '/uploads', icon: Upload, category: 'main' },
+  { label: 'Import', href: '/uploads', icon: Upload, category: 'main' },
   { label: 'Companies', href: '/companies', icon: Database, category: 'main' },
   { label: 'Audit Logs', href: '/audit-logs', icon: FileText, category: 'secondary' },
   { label: 'Notifications', href: '/notifications', icon: Bell, category: 'secondary' },

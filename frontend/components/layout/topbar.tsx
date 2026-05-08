@@ -29,9 +29,9 @@ export default function Topbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm hover:shadow-md transition">
+          <Link href="/notifications" className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm hover:shadow-md transition">
             <Bell className="h-5 w-5" />
-          </button>
+          </Link>
           <div className="relative">
             <button onClick={() => setOpen(!open)} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:bg-slate-50">
               <span className="text-sm font-medium">Admin</span>

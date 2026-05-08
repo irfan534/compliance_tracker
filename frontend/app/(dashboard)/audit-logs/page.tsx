@@ -6,7 +6,7 @@ import Card from '@/components/ui/card';
 import Button from '@/components/ui/button';
 import Badge from '@/components/ui/badge';
 import Input from '@/components/ui/input';
-import { Search, Filter, Calendar, User, AlertTriangle, Info, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Filter, Calendar, User, AlertTriangle, Info, CheckCircle, XCircle, Clock, Target, Activity, Zap, ArrowRight, TrendingUp, BarChart3, Shield, FileText, Eye } from 'lucide-react';
 
 interface AuditLog {
   id: string;
@@ -145,6 +145,164 @@ export default function AuditLogsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
+          {/* Audit Logs Overview Feature Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="glass p-6 bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 mb-6"
+          >
+            <div className="flex items-center gap-4">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center"
+              >
+                <Eye className="w-6 h-6 text-orange-600" />
+              </motion.div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-orange-900 mb-1">Security Audit Intelligence</h3>
+                <p className="text-orange-700 text-sm mb-3">
+                  Monitor all system activities, security events, and compliance tracking
+                </p>
+                
+                {/* Audit Tracking Flow Visualization */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-orange-200 shadow-sm"
+                  >
+                    <Target className="w-4 h-4 text-orange-600" />
+                    <span className="text-xs font-medium text-orange-800">Capture Events</span>
+                  </motion.div>
+                  
+                  <motion.div
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    <ArrowRight className="w-4 h-4 text-orange-400" />
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-red-200 shadow-sm"
+                  >
+                    <Activity className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-medium text-red-800">Analyze Patterns</span>
+                  </motion.div>
+                  
+                  <motion.div
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                  >
+                    <ArrowRight className="w-4 h-4 text-red-400" />
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-pink-200 shadow-sm"
+                  >
+                    <Shield className="w-4 h-4 text-pink-600" />
+                    <span className="text-xs font-medium text-pink-800">Security Insights</span>
+                  </motion.div>
+                </div>
+              </div>
+              
+              <motion.div
+                animate={{ 
+                  rotate: [0, 15, -15, 0],
+                }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="hidden md:block"
+              >
+                <Zap className="w-8 h-8 text-orange-400" />
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Quick Stats Dashboard */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="glass p-6 text-center"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+              >
+                <FileText className="w-6 h-6 text-orange-600" />
+              </motion.div>
+              <div className="text-2xl font-bold text-foreground">1,247</div>
+              <div className="text-sm text-muted-foreground">Total Logs</div>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="glass p-6 text-center"
+            >
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+              >
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </motion.div>
+              <div className="text-2xl font-bold text-foreground">23</div>
+              <div className="text-sm text-muted-foreground">Critical Events</div>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="glass p-6 text-center"
+            >
+              <motion.div
+                animate={{ 
+                  y: [0, -5, 0],
+                }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+              >
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </motion.div>
+              <div className="text-2xl font-bold text-foreground">156</div>
+              <div className="text-sm text-muted-foreground">Today's Activity</div>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="glass p-6 text-center"
+            >
+              <motion.div
+                animate={{ 
+                  opacity: [1, 0.5, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3"
+              >
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </motion.div>
+              <div className="text-2xl font-bold text-foreground">89%</div>
+              <div className="text-sm text-muted-foreground">Security Score</div>
+            </motion.div>
+          </div>
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
@@ -183,7 +341,7 @@ export default function AuditLogsPage() {
                 <option value="AUTH_LOGOUT">Logout</option>
                 <option value="USER_CREATED">User Created</option>
                 <option value="CERT_CREATED">Certification Created</option>
-                <option value="UPLOAD_STARTED">Upload Started</option>
+                <option value="UPLOAD_STARTED">Import Started</option>
               </select>
               <select
                 value={filterSeverity}
