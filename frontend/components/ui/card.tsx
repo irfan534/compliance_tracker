@@ -12,7 +12,7 @@ interface CardProps {
 
 export default function Card({ title, description, children, className }: CardProps) {
   return (
-    <div className={cn('glass p-6 rounded-3xl shadow-xl', className)}>
+    <div className={cn('card shadow-[0_1px_2px_rgba(0,0,0,0.02)]', className)}>
       {title && <h3 className="text-lg font-semibold text-foreground">{title}</h3>}
       {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
       <div className="mt-5">{children}</div>

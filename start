@@ -1,129 +1,66 @@
 #!/bin/bash
 
-# Quick Start Script - Minimal Setup for Tracker Platform
-echo "🚀 Tracker Compliance Platform - Start"
-echo "====================================="
+# ComplianceTracker Start Script
+# Starts the Next.js dev server for localhost testing
 
-# Colors
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+set -e
 
-print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-print_step() {
-    echo -e "${BLUE}[STEP]${NC} $1"
-}
-
-# 1. Setup database
-print_step "Setting up database..."
-cd backend
-if [ ! -f ".env" ]; then
-    echo "DATABASE_URL=\"postgresql://tracker_user:tracker_password@localhost:5432/tracker_db\"" > .env
-    echo "JWT_SECRET=\"dev-secret\"" >> .env
-    echo "NODE_ENV=development" >> .env
-fi
-
-# Generate Prisma client
-npx prisma generate
-
-# Setup database (simple approach)
-npx prisma db push --accept-data-loss
-
-# Seed with basic data
-npx prisma db seed 2>/dev/null || true
-
-print_status "Database ready ✓"
-
-# 2. Start backend (simple mode)
-print_step "Starting backend..."
-cd ..
-npm run dev > backend.log 2>&1 &
-BACKEND_PID=$!
-echo $BACKEND_PID > backend.pid
-
-print_status "Backend starting (PID: $BACKEND_PID) ✓"
-
-# 3. Simple frontend start
-print_step "Starting frontend..."
-cd frontend
-if [ ! -f ".env.local" ]; then
-    echo "NEXT_PUBLIC_API_URL=http://localhost:3001" > .env.local
-fi
-
-# Disable problematic features temporarily
-npm run dev > ../frontend.log 2>&1 &
-FRONTEND_PID=$!
-echo $FRONTEND_PID > ../frontend.pid
-
-cd ..
-print_status "Frontend starting (PID: $FRONTEND_PID) ✓"
-
-# 4. Wait and show info
-sleep 5
-
-echo ""
-echo "🎉 Tracker Platform is Starting!"
-echo "================================="
-echo ""
-echo "📍 URLs:"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend:  http://localhost:3001"
-echo ""
-echo "🔑 Login:"
-echo "   Email: admin@tracker.local"
-echo "   Password: Demo@123456"
-echo ""
-echo "📋 Commands:"
-echo "   Stop:     Press Ctrl+C"
-echo "   Logs:     tail -f backend.log frontend.log"
-echo ""
-echo "⏳ Please wait 30-60 seconds for full startup..."
-echo ""
-
-# Cleanup function for Ctrl+C
-cleanup() {
+if [ "${EUID:-$(id -u)}" -eq 0 ] || [ -n "${SUDO_USER:-}" ]; then
+    echo "❌ Error: do not run this script with sudo"
     echo ""
-    print_status "Stopping services..."
-    
-    if [ -f "backend.pid" ]; then
-        kill $(cat backend.pid) 2>/dev/null || true
-        rm backend.pid
-    fi
-    
-    if [ -f "frontend.pid" ]; then
-        kill $(cat frontend.pid) 2>/dev/null || true
-        rm frontend.pid
-    fi
-    
-    print_status "All services stopped."
-    exit 0
-}
-
-# Set up trap for Ctrl+C
-trap cleanup SIGINT SIGTERM
-
-# Check services
-sleep 10
-if curl -s http://localhost:3001 > /dev/null; then
-    print_status "Backend responding ✓"
-else
-    echo "⏳ Backend still starting..."
+    echo "Use:"
+    echo "  ./start"
+    exit 1
 fi
 
-if curl -s http://localhost:3000 > /dev/null; then
-    print_status "Frontend responding ✓"
-else
-    echo "⏳ Frontend still starting..."
-fi
-
+echo "🚀 Starting ComplianceTracker..."
 echo ""
-print_status "Tracker Platform started successfully! Check the URLs above."
-echo "Press Ctrl+C to stop all services."
 
-# Keep script running
-while true; do
-    sleep 1
-done
+# Check if .env.local exists
+if [ ! -f "frontend/.env.local" ]; then
+    echo "❌ Error: frontend/.env.local not found"
+    echo ""
+    echo "Please create frontend/.env.local with:"
+    echo "  NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co"
+    echo "  NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key"
+    echo ""
+    echo "See SETUP.md for detailed instructions."
+    exit 1
+fi
+
+# Navigate to frontend directory
+cd frontend
+
+# Rotate stale Next.js artifacts out of the way to avoid mixed prod/dev cache corruption
+if [ -d ".next-runtime" ]; then
+    stale_dir=".next-runtime.stale.$(date +%s)"
+    echo "♻️ Rotating stale Next.js runtime cache to ${stale_dir}..."
+    mv .next-runtime "${stale_dir}"
+    echo ""
+fi
+
+if [ -d ".next.sudo-bak" ]; then
+    echo "⚠️ Found leftover sudo-owned cache at frontend/.next.sudo-bak"
+    echo "   It is being ignored for this run."
+    echo ""
+fi
+
+if [ -d ".next" ]; then
+    echo "⚠️ Found legacy Next.js cache at frontend/.next"
+    echo "   The app now uses frontend/.next-runtime instead."
+    echo ""
+fi
+
+# Check if node_modules exists, if not install dependencies
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+    echo ""
+fi
+
+# Start the dev server
+echo "✅ Starting dev server on http://localhost:3000"
+echo "📝 Logs:"
+echo ""
+
+npm run dev

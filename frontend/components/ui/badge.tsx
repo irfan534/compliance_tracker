@@ -10,20 +10,20 @@ interface BadgeProps {
 }
 
 const badgeStyles = {
-  default: 'bg-emerald-100 text-emerald-700',
-  secondary: 'bg-amber-100 text-amber-700',
-  destructive: 'bg-rose-100 text-rose-700',
+  default: 'border border-[#CDEFD6] bg-[#E8F8EC] text-[#1A7F37]',
+  secondary: 'border border-[#FFD7A1] bg-[#FFF4E5] text-[#7A4500]',
+  destructive: 'border border-[#FFC5C1] bg-[#FFECEB] text-[#7A0000]',
 };
 
 export default function Badge({ children, variant = 'default', className, size = 'md' }: BadgeProps) {
   const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-xs',
-    lg: 'px-4 py-2 text-sm',
+    sm: 'px-2.5 py-1 text-[11px]',
+    md: 'px-3 py-1 text-[12px]',
+    lg: 'px-4 py-1.5 text-[13px]',
   };
   
   return (
-    <span className={cn('inline-flex rounded-full font-semibold', badgeStyles[variant], sizes[size], className)}>
+    <span className={cn('inline-flex items-center rounded-full font-semibold', badgeStyles[variant], sizes[size], className)}>
       {children}
     </span>
   );

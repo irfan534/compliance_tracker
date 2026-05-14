@@ -1,371 +1,167 @@
-# Tracker - Enterprise Compliance & Certification Management Platform
+# ComplianceTracker - Premium Certificate & Compliance Management
 
-A production-ready SaaS platform for managing compliance certifications, frameworks, and renewals with enterprise-grade security and premium UX.
+A sleek, minimalist Next.js application for tracking company certifications, compliance status, and renewal timelines. Built with Supabase, TailwindCSS, and Framer Motion.
 
-## 🎯 Overview
+## 🎯 Features
 
-Tracker is a comprehensive compliance management system designed for enterprises to:
+- **Certificate Management** — Track certificates by company with issue/expiry dates, issuing bodies, and logos
+- **Compliance Dashboard** — Real-time compliance percentage, expiring certificates alert, and activity logs
+- **Company Profiles** — Manage company details with logos, certificate counts, and compliance badges
+- **Activity Logging** — Append-only audit trail of all changes (add, delete, undo) with user attribution
+- **Undo Deletions** — 5-second undo window for accidental certificate deletions
+- **Expiry Alerts** — Configurable threshold (default 30 days) for "expiring soon" alerts
+- **Dark/Light Theme** — System-aware theme switching with next-themes
+- **Export Logs** — Download all activity logs as CSV for audit purposes
+- **Access Hash Auth** — Simple 4-hash authentication for small team access control
 
-- 🔐 Track certifications and compliance frameworks
-- 📅 Monitor expiry dates and renewal timelines  
-- 📊 Generate compliance dashboards and insights
-- 🔍 Maintain audit readiness and centralized compliance visibility
-- 📈 Upload and manage Excel/CSV data with intelligent mapping
-- 🛡️ Enforce enterprise-grade security and access controls
+## 🏗️ Tech Stack
 
-## 🏗️ Architecture
-
-### Tech Stack
-
-**Frontend:**
-- Next.js 15+ with App Router
-- TypeScript
-- TailwindCSS with shadcn/ui
-- Framer Motion for animations
-- React Query for state management
-- Zustand for app state
-
-**Backend:**
-- NestJS with TypeScript
-- Prisma ORM
-- PostgreSQL
-- JWT + Refresh token rotation
-- RBAC authorization
-
-**Infrastructure:**
-- Docker & Docker Compose
-- NGINX reverse proxy
-- HTTPS/TLS enforcement
-- Environment-based configuration
+**Frontend-Only (No Backend Required)**
+- Next.js 15+ with App Router & TypeScript
+- Supabase (PostgreSQL database + file storage)
+- TailwindCSS + shadcn/ui components
+- Framer Motion for smooth animations
+- next-themes for dark/light mode
 
 ## 📁 Project Structure
 
 ```
 tracker/
-├── backend/                 # NestJS application
-│   ├── src/
-│   │   ├── auth/           # Authentication module
-│   │   ├── users/          # User management
-│   │   ├── certifications/ # Certifications module
-│   │   ├── frameworks/     # Compliance frameworks
-│   │   ├── uploads/        # File upload handling
-│   │   ├── reports/        # Report generation
-│   │   ├── audit-logs/     # Audit trail
-│   │   ├── common/         # Shared utilities
-│   │   ├── config/         # Configuration
-│   │   ├── security/       # Security middleware
-│   │   └── main.ts
-│   ├── prisma/             # Database schema
-│   ├── package.json
-│   └── Dockerfile
-├── frontend/               # Next.js application
+├── frontend/                # Next.js application
 │   ├── app/
-│   │   ├── login/         # Login page
-│   │   ├── dashboard/     # Main dashboard
-│   │   ├── certifications/# Certifications module
-│   │   ├── frameworks/    # Frameworks module
-│   │   ├── uploads/       # Data upload page
-│   │   ├── reports/       # Reports page
-│   │   ├── calendar/      # Expiry calendar
-│   │   ├── audit-logs/    # Audit logs page
-│   │   ├── settings/      # Settings pages
-│   │   ├── profile/       # User profile
-│   │   └── layout.tsx
-│   ├── components/        # UI components
-│   ├── lib/              # Utilities
-│   ├── hooks/            # Custom hooks
-│   ├── types/            # TypeScript types
-│   ├── package.json
-│   └── Dockerfile
-├── docker/
-│   ├── docker-compose.yml
-│   ├── nginx.conf
-│   └── .env.example
-├── docs/                 # Documentation
-├── scripts/              # Utility scripts
-├── .github/
-│   └── copilot-instructions.md
-└── package.json          # Root package.json
+│   │   ├── login/          # Access hash login
+│   │   ├── (protected)/    # Protected routes with sidebar
+│   │   │   ├── dashboard/  # Compliance overview
+│   │   │   ├── companies/  # Company list & details
+│   │   │   ├── logs/       # Activity audit log
+│   │   │   └── settings/   # App configuration
+│   ├── components/         # Reusable React components
+│   ├── lib/               # Utilities & data fetching
+│   └── styles/            # Global styles
+├── supabase/              # Database schema
+├── .env.example           # Environment variables template
+└── SETUP.md              # Complete setup guide
 ```
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### Quick Start (Recommended)
+**See [SETUP.md](./SETUP.md) for detailed setup instructions.**
 
-The easiest way to get started is using our auto-setup script:
+### Easiest Way: Use Start Script
+
+After setting up your `.env.local` (see SETUP.md), just run:
 
 ```bash
+# Linux/Mac
 ./start
+
+# Windows
+start.bat
 ```
 
-This script will automatically:
-- ✅ Check system requirements
-- ✅ Install missing dependencies (Node.js, Docker, etc.)
-- ✅ Set up environment configuration with secure defaults
-- ✅ Generate SSL certificates
-- ✅ Build and start all services
-- ✅ Run database migrations
-- ✅ Perform health checks
+That's it! The script handles everything and starts the dev server at `http://localhost:3000`
 
-### Manual Installation
-
-If you prefer manual setup:
-
-**Prerequisites:**
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 15+
-
-**Steps:**
-1. **Clone and setup:**
-   ```bash
-   cd tracker
-   npm install
-   ```
-
-2. **Configure environment:**
-   ```bash
-   cp docker/.env.example docker/.env
-   # Edit docker/.env with your configuration
-   ```
-
-3. **Start services:**
-   ```bash
-   cd docker && docker-compose up -d
-   ```
-
-4. **Run migrations:**
-   ```bash
-   cd ../backend && npm run prisma:migrate:deploy
-   ```
-
-5. **Start development:**
-   ```bash
-   cd ../frontend && npm run dev
-   ```
-
-Access the application at `https://localhost:3000`
-
-### Start Script Options
+### 1 Minute Manual Setup (TL;DR)
 
 ```bash
-./start          # Default setup and start
-./start --dev     # Development mode
-./start --prod    # Production mode
-./start --help    # Show all options
-```
+# 1. Create Supabase project and get credentials
+# 2. Run schema from supabase/schema.sql in Supabase SQL editor
+# 3. Generate 4 hashes
+openssl rand -base64 8 | tr -dc 'A-Za-z0-9' | head -c 10  # Run 4 times
 
-## 🔐 Security Features
-
-### Authentication & Authorization
-- ✅ Argon2id password hashing
-- ✅ JWT access + refresh token rotation
-- ✅ HTTP-only secure cookies
-- ✅ RBAC with permission matrix
-- ✅ MFA-ready architecture
-- ✅ Brute force protection & rate limiting
-- ✅ Session management with timeout
-- ✅ Device & IP tracking
-
-### API Security
-- ✅ Input validation with Zod
-- ✅ SQL injection prevention via Prisma
-- ✅ CSRF protection
-- ✅ API rate limiting & throttling
-- ✅ Request size limits
-- ✅ API versioning
-- ✅ No sensitive error leakage
-
-### Data Protection
-- ✅ Encrypted environment secrets
-- ✅ Row-level authorization
-- ✅ Secure file uploads with malware scanning
-- ✅ Signed URLs for downloads
-- ✅ Database backups
-
-### Frontend Security
-- ✅ Strict Content Security Policy
-- ✅ XSS sanitization with DOMPurify
-- ✅ Escape all user input
-- ✅ Security headers (HSTS, X-Frame-Options, etc.)
-
-### Infrastructure
-- ✅ HTTPS/TLS enforced
-- ✅ Docker hardening
-- ✅ Non-root containers
-- ✅ NGINX reverse proxy
-- ✅ Centralized audit logging
-- ✅ Fail2ban-ready structure
-
-## 📊 Key Features
-
-### Dashboard
-- Executive summary with KPIs
-- Certification overview (total, active, expired)
-- Compliance percentage tracking
-- Expiry trend analytics
-- Framework distribution charts
-- Recent activity feed
-- Quick action buttons
-
-### Certifications Management
-- Complete CRUD operations
-- Advanced filtering & search
-- Expiry alerts with countdown
-- Status badges (Active/Expiring/Expired)
-- Document/evidence uploads
-- Logo management
-- Timeline view
-- Export functionality
-
-### Compliance Frameworks
-- Track ISO 27001, SOC 2, HIPAA, PCI DSS, GDPR, NIST, etc.
-- Maturity level tracking
-- Compliance percentage calculation
-- Associated certifications mapping
-- Owner assignment
-- Review scheduling
-
-### Data Imports
-- Excel (.xlsx) and CSV support
-- Drag & drop upload
-- Intelligent schema auto-mapping
-- Data preview before import
-- Duplicate detection
-- Import validation & rollback
-- Upload audit trail
-
-### Reports & Analytics
-- Expiry forecast reports
-- Compliance status reports
-- Renewal timeline projections
-- Audit readiness summaries
-- Framework coverage analysis
-- Export to PDF, CSV, Excel
-
-### Audit & Compliance
-- Complete audit trail with timestamps
-- User activity tracking
-- Data modification history
-- Login event logging
-- File upload tracking
-- IP and device monitoring
-- Security event alerts
-
-## 🎨 UI/UX Design
-
-- **Inspiration**: Apple.com premium design
-- **Aesthetic**: Minimalist, elegant, enterprise-grade
-- **Effects**: Glassmorphism, frosted glass, smooth animations
-- **Typography**: Roboto font family
-- **Components**: shadcn/ui with custom styling
-- **Animations**: Framer Motion for smooth transitions
-- **Responsiveness**: Mobile-first design, fully responsive
-
-## 📋 Roles & Permissions
-
-- **Super Admin**: Full system access, user management, organization settings
-- **Compliance Manager**: Manage certifications, frameworks, create reports
-- **Auditor**: View-only access, audit log access
-- **Viewer**: Read-only access to dashboards and reports
-
-## 🔧 Development
-
-### Backend Development
-```bash
-cd backend
-npm run dev
-```
-
-### Frontend Development
-```bash
+# 4. Update frontend/lib/auth-config.ts with your hashes
+# 5. Set .env.local in frontend/
 cd frontend
+echo "NEXT_PUBLIC_SUPABASE_URL=<your-url>" > .env.local
+echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-key>" >> .env.local
+
+# 6. Run dev server
+npm install
 npm run dev
 ```
 
-### Database Migrations
-```bash
-npm run db:migrate
-npm run db:seed  # Optional: seed sample data
+Visit `http://localhost:3000` and log in with one of your access hashes.
+
+## 📋 Pages & Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/login` | Access hash authentication |
+| `/dashboard` | Compliance overview, stats, recent logs |
+| `/companies` | Grid of all companies |
+| `/companies/[id]` | Company detail with certificates |
+| `/logs` | Full activity audit log with filters |
+| `/settings` | App name, threshold, theme, export logs |
+
+## 🔐 Authentication
+
+- **No password auth** — Uses 4 hardcoded 10-character access hashes
+- **SessionStorage only** — Per-tab session, lost on browser close
+- **Case-sensitive** — Hashes must match exactly
+- **Simple & Safe** — Suitable for small teams (not for public apps)
+
+## 📊 Activity Logging
+
+Every change (add, update, delete, undo, upload) is logged with:
+- **Timestamp** — When the action occurred
+- **Action** — What happened (e.g., "Certificate Added")
+- **Entity** — Which certificate/company (e.g., "ACME - ISO 27001")
+- **Performed By** — Masked user hash (last 4 chars, e.g., "••••Rt")
+
+Logs are **append-only** — no delete/modify capability.
+
+## 🎨 Design
+
+- **Inspiration**: Apple.com premium design language
+- **Style**: Minimalist, glassmorphic, enterprise-grade
+- **Font**: Roboto family via TailwindCSS
+- **Animations**: Smooth Framer Motion transitions
+- **Responsiveness**: Mobile-first, fully responsive
+
+## 🗄️ Database Schema
+
+See `supabase/schema.sql` for the complete schema. Key tables:
+
+- `companies` — Organization data with logos
+- `certificates` — Certs linked to companies with auto-computed status
+- `logs` — Append-only activity trail
+- `settings` — App configuration (app_name, expiry_threshold)
+
+## 🔧 Environment Variables
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-120-char-anon-key
 ```
 
-### Running Tests
-```bash
-npm run test
-npm run test:e2e
-```
+These are public (prefixed `NEXT_PUBLIC_`) because the app is frontend-only.
 
-### Linting & Formatting
-```bash
-npm run lint
-npm run format
-```
+## 📦 Deployment
 
-## 📦 Production Deployment
+Frontend-only app, can deploy to:
+- **Vercel** (recommended)
+- **Netlify**
+- **Railway**
+- **AWS Amplify**
+- **Any Node.js host**
 
-### Docker Build
-```bash
-docker build -f docker/backend.Dockerfile -t tracker-backend:latest .
-docker build -f docker/frontend.Dockerfile -t tracker-frontend:latest .
-```
+Just set the environment variables and deploy.
 
-### Deployment with Docker Compose
-```bash
-docker-compose -f docker/docker-compose.prod.yml up -d
-```
+## 🆘 Troubleshooting
 
-### Health Checks
-```bash
-curl https://api.tracker.local/health
-curl https://tracker.local/health
-```
+**"Invalid access hash"** → Check `frontend/lib/auth-config.ts`, verify hash is in the array  
+**Can't see data** → Verify `.env.local` has correct Supabase credentials  
+**Logo uploads fail** → Check Supabase storage buckets exist (company-logos, cert-logos)  
+**Undo not working** → Undo only works within 5 seconds of deletion  
 
-## 🔍 Monitoring & Logging
+See [SETUP.md](./SETUP.md) for more troubleshooting.
 
-- Centralized audit logs in PostgreSQL
-- Security event tracking
-- User activity monitoring
-- Failed login tracking
-- API request logging
-- Database query logging
-- Container health monitoring
+## 📝 License
 
-## 📚 API Documentation
-
-Full API documentation available at `https://api.tracker.local/api/docs` (Swagger UI)
-
-### Key Endpoints
-- `POST /auth/login` - User login
-- `POST /auth/refresh` - Refresh tokens
-- `GET /certifications` - List certifications
-- `POST /certifications` - Create certification
-- `POST /uploads` - Upload Excel/CSV data
-- `GET /reports` - Generate reports
-- `GET /audit-logs` - View audit trail
-
-## 🆘 Support & Help
-
-- Local development help: See `/docs`
-- API documentation: Check Swagger UI
-- Security concerns: Contact security team
-- Feature requests: Use GitHub issues
-
-## 📄 License
-
-Proprietary - All rights reserved
-
-## ✅ Compliance
-
-This platform implements:
-- ✅ OWASP Top 10 (2026) protections
-- ✅ Secure by Design principles
-- ✅ Zero Trust architecture
-- ✅ Defense in Depth strategy
-- ✅ GDPR compliance features
-- ✅ SOC 2 audit readiness
+Proprietary — All rights reserved
 
 ---
 
 **Version**: 1.0.0  
-**Last Updated**: May 2026  
-**Status**: Production Ready
+**Status**: Production Ready  
+**Built**: May 2026

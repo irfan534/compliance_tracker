@@ -11,6 +11,8 @@ coverage/
 dist/
 build/
 .next/
+frontend/.next*/
+frontend/.next-runtime*/
 out/
 
 # Environment variables

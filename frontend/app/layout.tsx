@@ -1,24 +1,16 @@
-'use client';
-
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { Roboto } from 'next/font/google';
 import '@/styles/globals.css';
+import { AppSettingsProvider } from '@/components/providers/app-settings-provider';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 
-const roboto = Roboto({
-  variable: '--font-roboto',
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '700'],
-});
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes
-    },
+export const metadata: Metadata = {
+  title: 'Tracking',
+  description: 'Enterprise Compliance Certificate Manager',
+  icons: {
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%231D1D1F"/><path d="M8 16.5l5 5 11-11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
   },
-});
+};
 
 export default function RootLayout({
   children,
@@ -26,23 +18,11 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" className={roboto.variable}>
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content={process.env.NODE_ENV === 'development'
-            ? "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* https: ws://localhost:* wss://localhost:*; frame-ancestors 'none'"
-            : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.tracker.local; frame-ancestors 'none'"
-          }
-        />
-        <title>Tracker - Enterprise Compliance Platform</title>
-      </head>
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AppSettingsProvider>{children}</AppSettingsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -9,7 +9,7 @@ const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>
       ref={ref}
       type={type}
       className={cn(
-        'w-full rounded-2xl border border-input bg-card px-4 py-3 text-sm text-foreground outline-none transition-all duration-300 focus:border-accent focus:ring-2 focus:ring-accent/20',
+        'w-full rounded-xl border border-[color:var(--app-input)] bg-[var(--app-panel)] px-4 py-3 text-[15px] text-[var(--app-text)] outline-none transition-all duration-150 placeholder:text-[var(--app-muted)] focus:border-[#0071E3] focus:ring-[3px] focus:ring-[rgba(0,113,227,0.3)]',
         className,
       )}
       {...props}

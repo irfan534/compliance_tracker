@@ -11,16 +11,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, type = 'button', variant = 'default', size = 'md', ...props }, ref) => {
     const variants = {
-      default: 'bg-accent text-accent-foreground shadow-lg shadow-accent/20 hover:bg-slate-900 hover:text-white',
-      outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-      ghost: 'hover:bg-accent hover:text-accent-foreground',
+      default: 'border border-black bg-black text-white shadow-none hover:border-[#1D1D1F] hover:bg-[#1D1D1F] active:bg-[#000000]',
+      outline: 'border border-black bg-black text-white shadow-none hover:border-[#1D1D1F] hover:bg-[#1D1D1F] active:bg-[#000000]',
+      secondary: 'border border-black bg-black text-white shadow-none hover:border-[#1D1D1F] hover:bg-[#1D1D1F] active:bg-[#000000]',
+      ghost: 'border border-black bg-black text-white shadow-none hover:border-[#1D1D1F] hover:bg-[#1D1D1F] active:bg-[#000000]',
     };
 
     const sizes = {
-      sm: 'px-3 py-2 text-xs',
-      md: 'px-4 py-3 text-sm',
-      lg: 'px-6 py-4 text-base',
+      sm: 'h-9 px-4 text-[13px]',
+      md: 'h-11 px-5 text-[14px]',
+      lg: 'h-12 px-6 text-[15px]',
     };
 
     return (
@@ -28,7 +28,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          'inline-flex items-center justify-center rounded-2xl font-semibold transition-all duration-300',
+          'inline-flex items-center justify-center rounded-full font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60',
           variants[variant],
           sizes[size],
           className,

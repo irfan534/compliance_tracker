@@ -52,7 +52,7 @@ export function SelectTrigger({ children, className }: SelectTriggerProps) {
       type="button"
       onClick={() => setIsOpen?.(!isOpen)}
       className={cn(
-        'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'flex h-11 w-full items-center justify-between rounded-xl border border-[color:var(--app-input)] bg-[var(--app-panel)] px-4 py-3 text-[15px] text-[var(--app-text)] transition-all duration-150 placeholder:text-[var(--app-muted)] focus:border-[#0071E3] focus:ring-[3px] focus:ring-[rgba(0,113,227,0.3)] disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
     >
@@ -78,7 +78,7 @@ export function SelectContent({ children, className }: SelectContentProps) {
   if (!isOpen) return null;
   
   return (
-    <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+    <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-[color:var(--app-border)] bg-[var(--app-panel)] p-2 text-[var(--app-text)] shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
       {children}
     </div>
   );
@@ -90,7 +90,7 @@ export function SelectItem({ value, children, className }: SelectItemProps) {
   return (
     <div
       className={cn(
-        'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+        'relative flex w-full cursor-pointer select-none items-center rounded-xl px-4 py-2.5 text-[14px] text-[var(--app-text)] outline-none hover:bg-[var(--app-surface)] focus:bg-[var(--app-surface)]',
         className
       )}
       onClick={() => {
