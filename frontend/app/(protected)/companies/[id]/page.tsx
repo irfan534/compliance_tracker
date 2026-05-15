@@ -72,10 +72,13 @@ export default function CompanyDetailPage() {
           return;
         }
 
+        // In Next.js 15, params might be a Promise
+        const companyId = params.id;
+
         const [{ data: companyData, error: companyError }, { data: certificateData, error: certificateError }] =
           await Promise.all([
-            supabase.from('companies').select('*').eq('id', params.id).single(),
-            supabase.from('certificates').select('*').eq('company_id', params.id).order('expiry_date', { ascending: true }),
+            supabase.from('companies').select('*').eq('id', companyId).single(),
+            supabase.from('certificates').select('*').eq('company_id', companyId).order('expiry_date', { ascending: true }),
           ]);
 
         if (companyError) {
