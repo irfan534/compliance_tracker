@@ -1,311 +1,225 @@
-# ComplianceTracker Setup & Deployment Guide
+# ComplianceTracker — Setup Guide
 
 ## Overview
-This is a premium compliance tracking application built with Next.js 15, TypeScript, Supabase, and Framer Motion. It features a minimalist, Apple-inspired UI with glassmorphic design patterns.
 
-## Tech Stack
-- **Frontend**: Next.js 15+ with App Router, TypeScript
-- **UI Framework**: shadcn/ui + TailwindCSS + Framer Motion
-- **Database**: Supabase (PostgreSQL)
-- **File Storage**: Supabase Storage (company-logos, cert-logos)
-- **Authentication**: Simple sessionStorage-based with 4 hardcoded access hashes
+ComplianceTracker is a Next.js 15 application with App Router, TypeScript, Supabase (Auth + PostgreSQL + Storage), TailwindCSS, and Framer Motion. Authentication uses **Supabase Auth** (email/password) with cookie-based sessions enforced by Next.js middleware.
 
-## Quick Start
+---
 
-### Option A: Use Start Script (Easiest)
+## Prerequisites
 
-After setting up `.env.local` (see steps below), just run:
+| Tool | Version |
+|------|---------|
+| Node.js | 18+ |
+| npm | 9+ |
+| A Supabase account | [supabase.com](https://supabase.com) |
 
-```bash
-# On Linux/Mac from root directory
-./start
+---
 
-# Or from frontend directory
-cd frontend
-./start
+## Step 1 — Create a Supabase Project
 
-# On Windows from root directory
-start.bat
-```
+1. Go to [supabase.com](https://supabase.com) → **New Project**
+2. Choose a name, database password, and region
+3. Wait ~2 minutes for the project to initialize
+4. Go to **Project Settings → API** and copy:
+   - **Project URL** (e.g., `https://abcxyz.supabase.co`)
+   - **Anon / public key** (starts with `eyJ...`)
+   - **Service role key** (starts with `eyJ...` — keep this secret)
 
-This script will:
-- ✅ Check if `.env.local` exists
-- ✅ Install dependencies if needed
-- ✅ Start the dev server
-- ✅ Open on http://localhost:3000
+---
 
-### Option B: Manual Setup
+## Step 2 — Run the Database Schema
 
-### 1. Create Supabase Project
-- Go to [supabase.com](https://supabase.com) and create a new project
-- Wait for the project to initialize
-- Copy your **Project URL** and **Anon Key** (found in Settings → API)
+1. In Supabase, go to **SQL Editor → New Query**
+2. Copy the full contents of `supabase/schema.sql`
+3. Paste and click **Run**
 
-### Option B: Manual Setup
+This creates the `companies`, `certificates`, `logs`, and `settings` tables, plus storage bucket policies.
 
-### Step 1: Create Supabase Project
-- Go to [supabase.com](https://supabase.com) and create a new project
-- Wait for the project to initialize
-- Copy your **Project URL** and **Anon Key** (found in Settings → API)
+---
 
-### Step 2: Set Up Database Schema
-- In Supabase, go to **SQL Editor**
-- Create a new query and copy-paste the entire contents of `supabase/schema.sql`
-- Run the query to set up all tables, buckets, and policies
+## Step 3 — Create Auth Users
 
-### Step 3: Generate Access Hashes
-Open a terminal and run the following command **4 times** to generate 4 unique 10-character alphanumeric hashes:
-```bash
-openssl rand -base64 8 | tr -dc 'A-Za-z0-9' | head -c 10
-```
+1. In Supabase, go to **Authentication → Users → Add user**
+2. Enter an email and a strong password
+3. Repeat for any additional users
 
-Example output (your hashes will be different):
-```
-eTOnTckbPg
-1uT05y00kH
-hxDr36ssUW
-TkDxsyozdh
-```
+> There are no user roles in this app — any authenticated Supabase user has full access.
 
-### Step 4: Update Access Hashes
-Edit `frontend/lib/auth-config.ts` and replace the placeholder hashes with your 4 generated hashes:
-```typescript
-export const ACCESS_HASHES = [
-  'YOUR_HASH_1',
-  'YOUR_HASH_2',
-  'YOUR_HASH_3',
-  'YOUR_HASH_4',
-] as const;
-```
+---
 
-### Step 5: Configure Environment Variables
-Create `frontend/.env.local` with your Supabase credentials:
-```
+## Step 4 — Configure Environment Variables
+
+In the `frontend/` directory, create a `.env.local` file:
+
+```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
-### Step 6: Install Dependencies & Run
+> **Important**: `SUPABASE_SERVICE_ROLE_KEY` is used only in Server Actions (never sent to the browser). The `NEXT_PUBLIC_` variables are public and safe for the client.
+
+---
+
+## Step 5 — Install Dependencies & Start
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-The app will be available at `http://localhost:3000`
+Visit `http://localhost:3000` — you will be redirected to `/login`. Sign in with the user credentials you created in Step 3.
 
-## Deployment
+### Or use the start script
 
-### Deploy to Vercel (Recommended)
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com) and connect your GitHub repo
-3. Set environment variables in Vercel dashboard:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Deploy
+```bash
+# Linux/Mac (from project root)
+./start
 
-### Deploy to Other Platforms
-The app is a pure Next.js frontend with no backend dependencies, so it can be deployed to any platform that supports Node.js:
-- Netlify
-- Railway
-- AWS Amplify
-- Google Cloud Run
-- Digital Ocean App Platform
+# Windows
+start.bat
+```
 
-## Features
+---
 
-### 1. Login (/)
-- Single input field: "Enter Access Hash"
-- Case-sensitive 10-character alphanumeric check against 4 hardcoded hashes
-- SessionStorage-based authentication (per-tab session, no persistence)
-- Shows error message "Invalid access hash" on wrong entry
+## Step 6 — Supabase Storage Buckets
 
-### 2. Dashboard (/dashboard)
-- **Stats Row**: Total Certs, Active, Expiring Soon (clickable), Expired
-- **Expiring Soon Modal**: Lists certs expiring within threshold, links to company pages
-- **Overall Compliance**: Single percentage bar showing (active / total) × 100
-- **Recent Logs**: Last 5 activity entries inline
+The schema.sql should create these automatically. Verify in **Supabase → Storage**:
 
-### 3. Companies (/companies)
-- **Grid View**: All companies with logo, name, cert count, compliance status badge
-- **Company Detail** (/companies/[id]):
-  - Header: Logo (with upload button), editable name, upload button
-  - Compliance summary with percentage bar
-  - Certificate table with add/delete functionality
-  - Undo toast for deletions (5-second window)
+| Bucket | Purpose |
+|--------|---------|
+| `company-logos` | Company logo images |
+| `cert-logos` | Certificate logo images |
 
-### 4. Certificate Management
-- **Add Certificate Modal**: Name, Issuing Body, Issue Date, Expiry Date, Logo upload
-- **Delete**: Removes from UI/DB immediately, shows undo toast for 5 seconds
-- **Logo Upload**: Stores in Supabase storage (`company-logos`, `cert-logos`)
-- **Status Auto-Calculated**: Active/Expiring/Expired based on expiry_date vs threshold
+If they don't exist, create them manually and set the bucket to **Public** or add a permissive policy for authenticated users.
 
-### 5. Logs (/logs)
-- Full-page append-only activity log
-- Columns: Timestamp, Action, Entity, Performed By (masked last 4 chars)
-- Filters: By Action type, By Company, Date range picker
-- Pagination: 20 per page, newest first
-- Read-only (no delete/clear option)
+> **Note**: For image uploads, only JPEG, PNG, and WebP formats are supported, with a maximum file size of 2MB.
 
-### 6. Settings (/settings)
-- **App Name**: Editable, stored in settings table
-- **Expiry Threshold**: Number input (days), default 30
-- **Theme**: Dark/Light toggle via next-themes
-- **Export Logs**: Download all logs as CSV
-- All changes logged to activity log
-
-## Database Schema
-
-### `companies`
-- `id` (UUID, PK)
-- `name` (text)
-- `logo_url` (text, nullable)
-- `created_at` (timestamptz)
-
-### `certificates`
-- `id` (UUID, PK)
-- `company_id` (UUID, FK)
-- `name` (text)
-- `issuing_body` (text, nullable)
-- `issue_date` (date, nullable)
-- `expiry_date` (date, nullable)
-- `status` (text, generated: 'active' | 'expiring' | 'expired')
-- `logo_url` (text, nullable)
-- `created_at` (timestamptz)
-
-### `logs`
-- `id` (UUID, PK)
-- `action` (text)
-- `entity` (text, nullable)
-- `company_id` (UUID, nullable)
-- `cert_id` (UUID, nullable)
-- `performed_by` (text, nullable) — stores last 4 chars of access hash
-- `created_at` (timestamptz)
-
-### `settings`
-- `key` (text, PK)
-- `value` (text)
-- Preloaded: `app_name`, `expiry_threshold`
+---
 
 ## Authentication Flow
 
-1. User visits `/login`
-2. Enters 10-character access hash
-3. If valid (matches one of 4 hashes):
-   - Set `sessionStorage.auth_token = <hash>`
-   - Redirect to `/dashboard`
-4. All protected routes check `sessionStorage` on mount
-5. If missing → redirect to `/login`
-6. Session is **per-tab only** (no cross-tab sync, no persistence across browser restarts)
-
-## Logging
-
-Every mutation (add, update, delete, upload) is logged:
-- `performedBy` stores the masked hash (last 4 characters) — e.g., `••••Rt`
-- Actions include: "Certificate Added", "Certificate Deleted", "Certificate Deletion Undone", "Company Logo Updated", "Company Name Updated", "Setting Changed"
-
-## Undo Functionality
-
-- When a certificate is deleted, it's removed from UI immediately
-- A 5-second undo toast appears at the bottom
-- If user clicks "Undo", the certificate is re-inserted with original ID/timestamps
-- Action logged as "Certificate Deletion Undone"
-- Uses `setTimeout` with ref to handle cleanup
-
-## Styling
-
-- **Font**: Roboto family (via TailwindCSS)
-- **Design**: Apple.com-inspired minimalist with glassmorphism
-- **Colors**: Dark sidebar, light/transparent cards with frosted glass effects
-- **Animations**: Framer Motion for all transitions (0.25-0.45 second durations)
-- **Responsive**: Mobile-first, optimized for desktop
-
-## Environment Variables
-
 ```
-# Required
-NEXT_PUBLIC_SUPABASE_URL=          # e.g., https://abc123.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=     # 120+ character key from Supabase
+User visits any protected route
+        ↓
+middleware.ts runs (server-side)
+        ↓
+supabase.auth.getUser() called with request cookies
+        ↓
+No session? → redirect to /login
+Has session? → render page
+        ↓
+/login: supabase.auth.signInWithPassword({ email, password })
+        ↓
+Success → cookie set by @supabase/ssr → redirect to /dashboard
+        ↓
+Sidebar "Sign Out" → supabase.auth.signOut() → redirect to /login
 ```
 
-These are public (prefixed with `NEXT_PUBLIC_`) because the app is frontend-only and connects directly to Supabase.
+---
 
 ## Project Structure
 
 ```
 frontend/
 ├── app/
-│   ├── login/page.tsx              # Login page with access hash
+│   ├── login/page.tsx              # Email/password login
+│   ├── page.tsx                    # Root → redirects to /dashboard or /login
+│   ├── layout.tsx                  # Root layout (providers)
 │   ├── (protected)/
-│   │   ├── layout.tsx              # Protected layout with sidebar + auth check
-│   │   ├── dashboard/page.tsx      # Stats, compliance, recent logs
+│   │   ├── layout.tsx              # Protected layout (sidebar + AuthGate)
+│   │   ├── dashboard/page.tsx      # Stats, compliance chart, recent logs
 │   │   ├── companies/
 │   │   │   ├── page.tsx            # Companies grid
 │   │   │   └── [id]/page.tsx       # Company detail with certs
-│   │   ├── logs/page.tsx           # Activity logs with filters
+│   │   ├── logs/page.tsx           # Activity audit log
 │   │   └── settings/page.tsx       # App settings
-│   └── layout.tsx                  # Root layout with providers
+│   └── actions/
+│       ├── auth.ts                 # signOut() server action
+│       └── db.ts                   # All database server actions
 ├── components/
-│   ├── Sidebar.tsx                 # Navigation sidebar
-│   ├── AuthGate.tsx                # Auth check wrapper
-│   ├── AddCertModal.tsx            # Modal to add certificates
-│   ├── CertTable.tsx               # Certificate list table
-│   ├── ComplianceBar.tsx           # Compliance percentage bar
-│   ├── ExpiringPanel.tsx           # Expiring certs modal/panel
-│   ├── UndoToast.tsx               # Deletion undo toast
+│   ├── AuthGate.tsx                # Client-side session guard
+│   ├── Sidebar.tsx                 # Navigation with Sign Out button
+│   ├── AddCertModal.tsx
 │   ├── providers/
 │   │   ├── app-settings-provider.tsx
 │   │   └── theme-provider.tsx
-│   └── ui/
-│       ├── badge.tsx, button.tsx, card.tsx, dialog.tsx, input.tsx, select.tsx
+│   └── ui/                         # badge, button, card, dialog, input, select
 ├── lib/
-│   ├── auth.ts                     # Auth helper functions
-│   ├── auth-config.ts              # 4 hardcoded access hashes
-│   ├── supabase.ts                 # Supabase client init
-│   ├── data.ts                     # Data fetching functions
-│   └── utils.ts                    # Helper utilities
-├── types/
-│   └── index.ts                    # TypeScript interfaces
-└── styles/
-    └── globals.css                 # Tailwind + custom styles
+│   ├── supabase-browser.ts         # Browser Supabase client (@supabase/ssr)
+│   ├── supabase-server.ts          # Service-role server client (for DB actions)
+│   ├── supabase-server-auth.ts     # Anon server client (for auth/session checks)
+│   └── utils.ts                    # Shared utilities
+├── middleware.ts                   # Route protection (runs on every request)
+├── types/index.ts                  # TypeScript interfaces
+└── styles/globals.css              # TailwindCSS + custom styles
 ```
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Where Used | Notes |
+|----------|----------|------------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Client + Server | Project URL from Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Client + Middleware | Anon/publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Server Actions only | Bypasses RLS — never expose to browser |
+
+---
+
+## Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production checklist.
+
+**Quick Vercel deploy:**
+
+```bash
+# 1. Push to GitHub
+# 2. Connect repo in vercel.com
+# 3. Set environment variables in Vercel dashboard:
+#    NEXT_PUBLIC_SUPABASE_URL
+#    NEXT_PUBLIC_SUPABASE_ANON_KEY
+#    SUPABASE_SERVICE_ROLE_KEY
+# 4. Deploy (Next.js detected automatically)
+```
+
+---
 
 ## Troubleshooting
 
-### "Invalid access hash" error
-- Verify you're using one of the 4 hashes from `lib/auth-config.ts`
-- Check that hash is exactly 10 characters
-- Hashes are case-sensitive
+### "Invalid login credentials"
+- Ensure the user exists in **Supabase → Authentication → Users**
+- Passwords are case-sensitive
+- Check the user is not blocked/banned
 
-### Can't see Supabase data
-- Confirm `.env.local` has correct `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Check RLS policies in Supabase are enabled (should be public access)
-- Verify schema.sql was run successfully
+### Redirect loop between `/` and `/login`
+- Verify `NEXT_PUBLIC_SUPABASE_ANON_KEY` is set and correct
+- Restart the dev server after changing `.env.local`
+
+### Can't see data after login
+- Verify `.env.local` has correct `NEXT_PUBLIC_SUPABASE_URL`
+- Confirm `supabase/schema.sql` ran without errors
+- Check RLS policies in Supabase allow your use case
 
 ### Logo uploads failing
-- Ensure Supabase storage buckets exist: `company-logos`, `cert-logos`
-- Check bucket policies are set to public
-- Verify file size is under Supabase limits (~100 MB)
+- Confirm storage buckets `company-logos` and `cert-logos` exist
+- Verify `SUPABASE_SERVICE_ROLE_KEY` is set (needed for signed URL generation)
+- Max upload size is 2 MB; JPEG/PNG/WebP only
 
-### Undo not working
-- Undo only works within 5 seconds of deletion
-- After 5 seconds, deletion is permanent
-- Ensure certificate ID hasn't been reused
+### Session expiring too quickly
+- Supabase default JWT expiry is 1 hour (with automatic refresh)
+- To increase: Supabase → Authentication → Settings → JWT expiry
 
-## Support & Customization
+---
 
-To customize:
-1. **Hashes**: Edit `frontend/lib/auth-config.ts`
-2. **Theme Colors**: Edit `frontend/tailwind.config.js` and `frontend/styles/globals.css`
-3. **App Name Default**: Edit `frontend/components/providers/app-settings-provider.tsx`
-4. **Expiry Threshold Default**: Edit Supabase `settings` table directly
-5. **Sidebar Navigation**: Edit `frontend/components/Sidebar.tsx`
+## Customization
 
-## Notes
-
-- The app is **frontend-only** — no backend server, no NestJS, no Prisma
-- Authentication is **not secure** for production — it's a simple access hash check suitable for small teams
-- All data is **public** within Supabase (RLS policies allow all)
-- **Logs are append-only** — no delete/clear functionality
-- **Theme persists** via next-themes localStorage
-- **Session is ephemeral** — closing the tab logs you out
+| What | Where |
+|------|-------|
+| Default app name | `components/providers/app-settings-provider.tsx` |
+| Default expiry threshold | `settings` table in Supabase (key: `expiry_threshold`) |
+| Theme colors | `styles/globals.css` CSS variables |
+| Sidebar navigation items | `components/Sidebar.tsx` → `items` array |
+| Max upload size | `app/actions/db.ts` → `MAX_UPLOAD_BYTES` |
