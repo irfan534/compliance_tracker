@@ -147,7 +147,22 @@ export const getCertificateInsertPayload = (certificate: {
   created_at: certificate.created_at,
 });
 
+export const isSupabaseConfigError = (error: unknown) => {
+  if (!error || typeof error !== 'object' || !('message' in error) || typeof error.message !== 'string') {
+    return false;
+  }
+
+  return (
+    error.message.includes('SUPABASE_SERVICE_ROLE_KEY') ||
+    error.message.includes('NEXT_PUBLIC_SUPABASE_URL')
+  );
+};
+
 export const getSupabaseErrorMessage = (error: unknown, fallback: string) => {
+  if (isSupabaseConfigError(error)) {
+    return 'Server database access is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in frontend/.env.local, then restart the app.';
+  }
+
   if (error && typeof error === 'object') {
     // Check for Supabase-specific error structure
     if ('message' in error && typeof error.message === 'string') {

@@ -8,7 +8,14 @@ import Card from '@/components/ui/card';
 import ComplianceBar from '@/components/ComplianceBar';
 import ExpiringPanel from '@/components/ExpiringPanel';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
-import { formatDate, formatDateTime, getCertificateStatus, getCompliancePercentage, getSupabaseErrorMessage } from '@/lib/utils';
+import {
+  formatDate,
+  formatDateTime,
+  getCertificateStatus,
+  getCompliancePercentage,
+  getSupabaseErrorMessage,
+  isSupabaseConfigError,
+} from '@/lib/utils';
 import type { Certificate, LogEntry } from '@/types';
 
 type ExpiringCertificate = Certificate & {
@@ -28,6 +35,7 @@ export default function DashboardPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasBlockingConfigError, setHasBlockingConfigError] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<'expiring' | 'expired'>('expiring');
 
@@ -37,6 +45,7 @@ export default function DashboardPage() {
     const loadDashboard = async () => {
       setLoading(true);
       setError(null);
+      setHasBlockingConfigError(false);
 
       try {
         const { certificates: rawCerts, logs: rawLogs } = await serverFetchDashboard();
@@ -68,6 +77,7 @@ export default function DashboardPage() {
         setLogs(rawLogs);
       } catch (caughtError) {
         if (active) {
+          setHasBlockingConfigError(isSupabaseConfigError(caughtError));
           setError(getSupabaseErrorMessage(caughtError, 'Unable to load dashboard data.'));
         }
       } finally {
@@ -107,6 +117,26 @@ export default function DashboardPage() {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (hasBlockingConfigError) {
+    return (
+      <div className="space-y-8">
+        <section className="flex flex-col gap-3">
+          <p className="page-eyebrow">Dashboard</p>
+          <div>
+            <h1 className="text-[28px] font-bold tracking-[-0.5px] text-[var(--app-text)]">Overview</h1>
+            <p className="mt-2 text-[15px] text-[var(--app-muted)]">
+              Monitor certificate health, upcoming expiries, and recent activity in one place.
+            </p>
+          </div>
+        </section>
+
+        <Card className="border-[#FFD7A1] bg-[#FFF4E5]">
+          <p className="text-sm text-[#7A4500]">{error}</p>
+        </Card>
+      </div>
+    );
   }
 
   return (
