@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getSupabaseClient } from '@/lib/supabase';
+import { serverFetchSettings } from '@/app/actions/db';
 
 interface AppSettingsContextValue {
   appName: string;
@@ -21,21 +21,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
   const refreshSettings = async () => {
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setAppName('ComplianceTracker');
-        setExpiryThreshold(30);
-        return;
-      }
-
-      const { data, error } = await supabase.from('settings').select('key, value').in('key', ['app_name', 'expiry_threshold']);
-
-      if (error) {
-        throw error;
-      }
-
-      const nextAppName = data?.find((setting) => setting.key === 'app_name')?.value || 'ComplianceTracker';
-      const nextThreshold = Number(data?.find((setting) => setting.key === 'expiry_threshold')?.value || 30);
+      const settings = await serverFetchSettings();
+      const nextAppName = settings.app_name || 'ComplianceTracker';
+      const nextThreshold = Number(settings.expiry_threshold || 30);
 
       setAppName(nextAppName);
       setExpiryThreshold(Number.isFinite(nextThreshold) ? nextThreshold : 30);

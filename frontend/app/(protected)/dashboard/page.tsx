@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, AlertTriangle, BadgeCheck, Files, ShieldAlert } from 'lucide-react';
+import { serverFetchDashboard } from '@/app/actions/db';
 import Card from '@/components/ui/card';
 import ComplianceBar from '@/components/ComplianceBar';
 import ExpiringPanel from '@/components/ExpiringPanel';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { formatDate, formatDateTime, getCertificateStatus, getCompliancePercentage, getSupabaseErrorMessage } from '@/lib/utils';
 import type { Certificate, LogEntry } from '@/types';
 
@@ -39,31 +39,8 @@ export default function DashboardPage() {
       setError(null);
 
       try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          if (active) {
-            setLoading(false);
-          }
-          return;
-        }
-
-        const [certificateResponse, logsResponse] = await Promise.all([
-          supabase
-            .from('certificates')
-            .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at, companies(name)')
-            .order('expiry_date', { ascending: true }),
-          supabase.from('logs').select('*').order('created_at', { ascending: false }).limit(5),
-        ]);
-
-        if (certificateResponse.error) {
-          throw certificateResponse.error;
-        }
-
-        if (logsResponse.error) {
-          throw logsResponse.error;
-        }
-
-        const mappedCertificates = (certificateResponse.data ?? []).map((item) => {
+        const { certificates: rawCerts, logs: rawLogs } = await serverFetchDashboard();
+        const mappedCertificates = rawCerts.map((item) => {
           const companyRelation = item.companies as { name?: string } | Array<{ name?: string }> | null;
           const companyName = Array.isArray(companyRelation)
             ? companyRelation[0]?.name ?? 'Unknown Company'
@@ -88,7 +65,7 @@ export default function DashboardPage() {
         }
 
         setCertificates(mappedCertificates);
-        setLogs(logsResponse.data ?? []);
+        setLogs(rawLogs);
       } catch (caughtError) {
         if (active) {
           setError(getSupabaseErrorMessage(caughtError, 'Unable to load dashboard data.'));
@@ -144,29 +121,6 @@ export default function DashboardPage() {
             </p>
           </div>
         </section>
-
-        {!isSupabaseConfigured && process.env.NODE_ENV === 'development' ? (
-          <div
-            style={{
-              background: '#FFF4E5',
-              border: '1px solid #FF9500',
-              borderRadius: '12px',
-              padding: '14px 18px',
-              fontSize: '14px',
-              color: '#7A4500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}
-          >
-            <span>⚠️</span>
-            <span>
-              Add <code style={{ background: '#FFE5B4', borderRadius: '4px', padding: '1px 6px' }}>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-              <code style={{ background: '#FFE5B4', borderRadius: '4px', padding: '1px 6px' }}>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to your{' '}
-              <code>.env.local</code> file.
-            </span>
-          </div>
-        ) : null}
 
         {error ? (
           <Card className="border-[#FFC5C1] bg-[#FFECEB]">

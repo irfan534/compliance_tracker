@@ -3,14 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Download, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { serverFetchAllLogs, serverLogActivity, serverUpdateSetting } from '@/app/actions/db';
 import Button from '@/components/ui/button';
 import BackButton from '@/components/BackButton';
 import Card from '@/components/ui/card';
 import Input from '@/components/ui/input';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
-import { getStoredAuthToken } from '@/lib/auth';
-import { logActivity } from '@/lib/data';
-import { getSupabaseClient } from '@/lib/supabase';
 import { downloadLogsCsv, getSupabaseErrorMessage } from '@/lib/utils';
 
 export default function SettingsPage() {
@@ -31,27 +29,13 @@ export default function SettingsPage() {
 
     try {
       const nextThreshold = Number(thresholdValue) || 30;
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('Supabase is not configured.');
-        return;
-      }
-
-      const { error: settingsError } = await supabase.from('settings').upsert([
-        { key: 'expiry_threshold', value: String(nextThreshold) },
-      ]);
-
-      if (settingsError) {
-        throw settingsError;
-      }
-
-      const performedBy = getStoredAuthToken();
+      await serverUpdateSetting('expiry_threshold', String(nextThreshold));
 
       if (nextThreshold !== expiryThreshold) {
-        await logActivity({
+        await serverLogActivity({
           action: 'Setting Changed',
           entity: 'Expiry Warning Threshold',
-          performedBy,
+          performedBy: 'internal-user',
         });
       }
 
@@ -68,19 +52,8 @@ export default function SettingsPage() {
     setError(null);
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('Supabase is not configured.');
-        return;
-      }
-
-      const { data, error: logsError } = await supabase.from('logs').select('*').order('created_at', { ascending: false });
-
-      if (logsError) {
-        throw logsError;
-      }
-
-      downloadLogsCsv(data ?? []);
+      const data = await serverFetchAllLogs();
+      downloadLogsCsv(data);
     } catch (caughtError) {
       setError(getSupabaseErrorMessage(caughtError, 'Unable to export logs.'));
     } finally {

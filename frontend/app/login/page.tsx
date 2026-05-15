@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { checkLock, clearAttempts, recordFail } from '@/app/actions/auth';
 import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
 import Input from '@/components/ui/input';
@@ -13,7 +14,6 @@ import {
   isValidAccessHash,
   setStoredAuthToken,
   sanitizeHashInput,
-  recordFailedAttempt,
   isLoginLocked,
 } from '@/lib/auth';
 import { PERSONAL_KEY_MAP } from '@/lib/auth-config';
@@ -64,10 +64,11 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Check if locked
-    const locked = isLoginLocked();
+    const locked = await checkLock();
     if (locked.isLocked) {
-      setError(`Account locked. Try again in ${locked.minutesRemaining} minute${locked.minutesRemaining !== 1 ? 's' : ''}.`);
+      setIsLocked(true);
+      setLockoutMinutes(locked.minutesRemaining);
+      setError(`Locked for ${locked.minutesRemaining} more minute(s).`);
       return;
     }
 
@@ -78,13 +79,12 @@ export default function LoginPage() {
     const sanitized = sanitizeHashInput(hash);
 
     if (!isValidAccessHash(sanitized)) {
-      // Record failed attempt
-      const result = recordFailedAttempt();
+      const result = await recordFail();
       setSubmitting(false);
 
       if (result.isLocked) {
         setIsLocked(true);
-        setLockoutMinutes(result.lockoutEndTime ? Math.ceil((result.lockoutEndTime - Date.now()) / 60 / 1000) : 0);
+        setLockoutMinutes(result.minutesRemaining);
         setError(result.message);
       } else {
         setError('Invalid access hash');
@@ -94,6 +94,7 @@ export default function LoginPage() {
 
     // Valid hash
     try {
+      await clearAttempts();
       await setStoredAuthToken(sanitized);
       router.replace('/dashboard');
     } catch (err) {

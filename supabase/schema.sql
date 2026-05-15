@@ -72,86 +72,23 @@ alter table certificates enable row level security;
 alter table logs enable row level security;
 alter table settings enable row level security;
 
--- Restrictive policies for Companies
-create policy "users_access_own_companies" on companies
-  for select using (
-    auth.uid() is not null and (
-      owner_id = auth.uid() or
-      exists (
-        select 1 from company_members
-        where company_members.company_id = companies.id
-        and company_members.user_id = auth.uid()
-      )
-    )
-  );
-
-create policy "users_update_own_companies" on companies
-  for update using (
-    owner_id = auth.uid() or
-    exists (
-      select 1 from company_members
-      where company_members.company_id = companies.id
-      and company_members.user_id = auth.uid()
-      and role in ('owner', 'editor')
-    )
-  );
-
-create policy "users_delete_own_companies" on companies
-  for delete using (owner_id = auth.uid());
-
--- Restrictive policies for Certificates (Inherit from Company access)
-create policy "users_access_company_certificates" on certificates
-  for all using (
-    auth.uid() is not null and
-    exists (
-      select 1 from companies
-      where companies.id = certificates.company_id and (
-        companies.owner_id = auth.uid() or
-        exists (
-          select 1 from company_members
-          where company_members.company_id = companies.id
-          and company_members.user_id = auth.uid()
-          and (
-            role in ('owner', 'editor') or 
-            (current_query() ilike '%select%' and role = 'viewer')
-          )
-        )
-      )
-    )
-  );
-
--- Restrictive policies for Logs
-create policy "users_view_company_logs" on logs
-  for select using (
-    auth.uid() is not null and (
-      user_id = auth.uid() or
-      exists (
-        select 1 from companies
-        where companies.id = logs.company_id and (
-          companies.owner_id = auth.uid() or
-          exists (
-            select 1 from company_members
-            where company_members.company_id = companies.id
-            and company_members.user_id = auth.uid()
-            and role in ('owner', 'editor')
-          )
-        )
-      )
-    )
-  );
-
--- Restrictive policies for Settings
-create policy "users_view_settings" on settings
-  for select using (auth.uid() is not null);
-
-create policy "admins_modify_settings" on settings
-  for update using (
-    exists (
-      select 1 from user_profiles
-      where user_profiles.id = auth.uid()
-      and is_admin = true
-    )
-  );
+-- Drop legacy auth.uid()-based policies. This app does not use Supabase Auth
+-- for browser sessions, so all table access is routed through server actions
+-- with the service role key instead.
+drop policy if exists "users_access_own_companies" on companies;
+drop policy if exists "users_update_own_companies" on companies;
+drop policy if exists "users_delete_own_companies" on companies;
+drop policy if exists "users_insert_companies" on companies;
+drop policy if exists "users_access_company_certificates" on certificates;
+drop policy if exists "users_insert_certificates" on certificates;
+drop policy if exists "users_view_company_logs" on logs;
+drop policy if exists "users_insert_logs" on logs;
+drop policy if exists "users_view_settings" on settings;
+drop policy if exists "admins_modify_settings" on settings;
+drop policy if exists "public full access companies" on companies;
+drop policy if exists "public full access certificates" on certificates;
+drop policy if exists "public full access logs" on logs;
+drop policy if exists "public full access settings" on settings;
 
 insert into storage.buckets (id, name, public)
 values ('company-logos', 'company-logos', false)
@@ -161,25 +98,30 @@ insert into storage.buckets (id, name, public)
 values ('cert-logos', 'cert-logos', false)
 on conflict (id) do nothing;
 
--- Secure Storage Policies
-create policy "users_upload_company_logos" on storage.objects
-  for insert with check (
-    bucket_id = 'company-logos' and
-    auth.uid() is not null and
-    exists (
-      select 1 from companies
-      where companies.id = (storage.foldername(name))[1]::uuid
-      and (
-        owner_id = auth.uid() or
-        exists (
-          select 1 from company_members
-          where company_members.company_id = companies.id
-          and company_members.user_id = auth.uid()
-          and role in ('owner', 'editor')
-        )
-      )
-    )
-  );
+drop policy if exists "authenticated_users_read_logos" on storage.objects;
+drop policy if exists "users_upload_company_logos" on storage.objects;
 
-create policy "authenticated_users_read_logos" on storage.objects
-  for select using (auth.uid() is not null);
+create policy "block_anon" on companies
+  for all
+  using (false)
+  with check (false);
+
+create policy "block_anon" on certificates
+  for all
+  using (false)
+  with check (false);
+
+create policy "block_anon" on logs
+  for all
+  using (false)
+  with check (false);
+
+create policy "block_anon" on settings
+  for all
+  using (false)
+  with check (false);
+
+create policy "block_anon_storage" on storage.objects
+  for all
+  using (false)
+  with check (false);

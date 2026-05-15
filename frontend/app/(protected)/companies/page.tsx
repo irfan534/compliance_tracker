@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Building2, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import {
+  serverCreateCertificate,
+  serverCreateCompany,
+  serverFetchCompanies,
+  serverLogActivity,
+  serverUploadImage,
+} from '@/app/actions/db';
 import AddCertModal, { AddCertificateFormValues } from '@/components/AddCertModal';
 import Card from '@/components/ui/card';
 import Badge from '@/components/ui/badge';
@@ -11,9 +18,6 @@ import Button from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
-import { getStoredAuthToken } from '@/lib/auth';
-import { createCertificate, createCompany, logActivity, uploadImage } from '@/lib/data';
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import {
   getCertificateStatus,
   getCompanyStatusLabel,
@@ -29,6 +33,14 @@ type CompanyRow = Company & {
     expiry_date: string | null;
   }>;
 };
+
+const fileToBase64 = async (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
 
 export default function CompaniesPage() {
   const router = useRouter();
@@ -51,23 +63,7 @@ export default function CompaniesPage() {
       setError(null);
 
       try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          if (active) {
-            setCompanies([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const { data, error: companyError } = await supabase
-          .from('companies')
-          .select('id, name, logo_url, created_at, certificates(id, expiry_date)')
-          .order('name', { ascending: true });
-
-        if (companyError) {
-          throw companyError;
-        }
+        const data = await serverFetchCompanies();
 
         if (!active) {
           return;
@@ -102,18 +98,18 @@ export default function CompaniesPage() {
     setError(null);
 
     try {
-      const company = await createCompany(companyName.trim());
+      const company = await serverCreateCompany(companyName.trim());
       setCompanies((current) =>
         [...current, { ...company, certificates: [] }].sort((left, right) => left.name.localeCompare(right.name)),
       );
       setCreateOpen(false);
       setCompanyName('');
 
-      await logActivity({
+      await serverLogActivity({
         action: 'Company Added',
         entity: company.name,
         companyId: company.id,
-        performedBy: getStoredAuthToken(),
+        performedBy: 'internal-user',
       });
     } catch (caughtError) {
       setError(getSupabaseErrorMessage(caughtError, 'Unable to create company.'));
@@ -131,8 +127,21 @@ export default function CompaniesPage() {
     setError(null);
 
     try {
-      const logoUrl = values.logoFile ? await uploadImage('cert-logos', values.logoFile, selectedCompany.id) : null;
-      const certificate = await createCertificate(
+      let logoUrl: string | null = null;
+      if (values.logoFile) {
+        const base64 = await fileToBase64(values.logoFile);
+        logoUrl = await serverUploadImage(
+          'cert-logos',
+          {
+            base64,
+            mimeType: values.logoFile.type,
+            size: values.logoFile.size,
+          },
+          selectedCompany.id,
+        );
+      }
+
+      const certificate = await serverCreateCertificate(
         selectedCompany.id,
         values.name,
         values.issuingBody || null,
@@ -152,21 +161,21 @@ export default function CompaniesPage() {
         ),
       );
 
-      await logActivity({
+      await serverLogActivity({
         action: 'Certificate Added',
         entity: `${selectedCompany.name} - ${certificate.name}`,
         companyId: selectedCompany.id,
         certId: certificate.id,
-        performedBy: getStoredAuthToken(),
+        performedBy: 'internal-user',
       });
 
       if (logoUrl) {
-        await logActivity({
+        await serverLogActivity({
           action: 'Certificate Logo Updated',
           entity: `${selectedCompany.name} - ${certificate.name}`,
           companyId: selectedCompany.id,
           certId: certificate.id,
-          performedBy: getStoredAuthToken(),
+          performedBy: 'internal-user',
         });
       }
 
@@ -195,22 +204,6 @@ export default function CompaniesPage() {
             Create Company
           </Button>
         </section>
-
-        {!isSupabaseConfigured && process.env.NODE_ENV === 'development' ? (
-          <Card className="border-[#FF9500] bg-[#FFF4E5] py-4">
-            <div className="flex items-center gap-3 text-[#7A4500]">
-              <span className="text-lg">⚠️</span>
-              <p className="text-sm font-medium">
-                Supabase is not configured. 
-                <span className="block mt-1 font-normal opacity-90">
-                  Ensure <code className="bg-[#FFE5B4] px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-                  <code className="bg-[#FFE5B4] px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> are set in{' '}
-                  <code className="font-bold">frontend/.env.local</code> and restart your development server.
-                </span>
-              </p>
-            </div>
-          </Card>
-        ) : null}
 
         {error ? (
           <Card className="border-[#FFC5C1] bg-[#FFECEB]">

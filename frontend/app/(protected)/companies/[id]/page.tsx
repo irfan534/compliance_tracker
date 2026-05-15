@@ -3,6 +3,18 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, ImagePlus, Trash2 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import {
+  serverCreateCertificate,
+  serverDeleteCertificate,
+  serverDeleteCompany,
+  serverFetchCertificatesByCompany,
+  serverFetchCompanyById,
+  serverInsertCertificate,
+  serverLogActivity,
+  serverUpdateCompanyLogo,
+  serverUpdateCompanyName,
+  serverUploadImage,
+} from '@/app/actions/db';
 import AddCertModal, { AddCertificateFormValues } from '@/components/AddCertModal';
 import BackButton from '@/components/BackButton';
 import CertTable from '@/components/CertTable';
@@ -13,8 +25,6 @@ import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Input from '@/components/ui/input';
-import { deleteCompany, logActivity, uploadImage } from '@/lib/data';
-import { getSupabaseClient } from '@/lib/supabase';
 import {
   getCertificateInsertPayload,
   getCertificateStatus,
@@ -30,6 +40,14 @@ const sanitizeInput = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 500);                        // Cap at 500 chars
+
+const fileToBase64 = async (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
 
 export default function CompanyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -62,39 +80,18 @@ export default function CompanyDetailPage() {
       setError(null);
 
       try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          if (active) {
-            setCompany(null);
-            setCertificates([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // In Next.js 15, params might be a Promise
         const companyId = params.id;
-
-        const [{ data: companyData, error: companyError }, { data: certificateData, error: certificateError }] =
-          await Promise.all([
-            supabase.from('companies').select('*').eq('id', companyId).single(),
-            supabase.from('certificates').select('*').eq('company_id', companyId).order('expiry_date', { ascending: true }),
-          ]);
-
-        if (companyError) {
-          throw companyError;
-        }
-
-        if (certificateError) {
-          throw certificateError;
-        }
+        const [companyData, certificateData] = await Promise.all([
+          serverFetchCompanyById(companyId),
+          serverFetchCertificatesByCompany(companyId),
+        ]);
 
         if (!active) {
           return;
         }
 
         setCompany(companyData);
-        setEditingName(companyData.name);
+        setEditingName(companyData?.name ?? '');
         setCertificates(certificateData ?? []);
       } catch (caughtError) {
         if (active) {
@@ -133,21 +130,11 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('Supabase is not configured.');
-        return;
-      }
-
       const nextName = sanitizeInput(editingName);
-      const { error: updateError } = await supabase.from('companies').update({ name: nextName }).eq('id', company.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setCompany({ ...company, name: nextName });
-      await logActivity({
+      const updatedCompany = await serverUpdateCompanyName(company.id, nextName);
+      setCompany(updatedCompany);
+      setEditingName(updatedCompany.name);
+      await serverLogActivity({
         action: 'Company Name Updated',
         entity: `${company.name} -> ${nextName}`,
         companyId: company.id,
@@ -171,21 +158,20 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      const logoUrl = await uploadImage('company-logos', file, company.id);
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('Supabase is not configured.');
-        return;
-      }
+      const base64 = await fileToBase64(file);
+      const logoUrl = await serverUploadImage(
+        'company-logos',
+        {
+          base64,
+          mimeType: file.type,
+          size: file.size,
+        },
+        company.id,
+      );
+      const updatedCompany = await serverUpdateCompanyLogo(company.id, logoUrl);
 
-      const { error: updateError } = await supabase.from('companies').update({ logo_url: logoUrl }).eq('id', company.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setCompany({ ...company, logo_url: logoUrl });
-      await logActivity({
+      setCompany(updatedCompany);
+      await serverLogActivity({
         action: 'Company Logo Updated',
         entity: company.name,
         companyId: company.id,
@@ -222,8 +208,8 @@ export default function CompanyDetailPage() {
     undoTimeoutRef.current = window.setTimeout(async () => {
       try {
         if (deletedCompanyRef.current) { // Ensure it hasn't been undone
-          await deleteCompany(deletedCompanyRef.current.id);
-          await logActivity({
+          await serverDeleteCompany(deletedCompanyRef.current.id);
+          await serverLogActivity({
             action: 'Company Deleted',
             entity: deletedCompanyRef.current.name,
             companyId: deletedCompanyRef.current.id,
@@ -248,32 +234,33 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setError('Supabase is not configured.');
-        return;
+      let logoUrl: string | null = null;
+      if (values.logoFile) {
+        const base64 = await fileToBase64(values.logoFile);
+        logoUrl = await serverUploadImage(
+          'cert-logos',
+          {
+            base64,
+            mimeType: values.logoFile.type,
+            size: values.logoFile.size,
+          },
+          company.id,
+        );
       }
 
-      const logoUrl = values.logoFile ? await uploadImage('cert-logos', values.logoFile, company.id) : null;
-      const payload = {
-        company_id: company.id,
-        name: sanitizeInput(values.name),
-        issuing_body: sanitizeInput(values.issuingBody),
-        issue_date: values.issueDate,
-        expiry_date: values.expiryDate,
-        logo_url: logoUrl,
-      };
-
-      const { data, error: insertError } = await supabase.from('certificates').insert(payload).select('*').single();
-
-      if (insertError) {
-        throw insertError;
-      }
+      const data = await serverCreateCertificate(
+        company.id,
+        values.name,
+        values.issuingBody || null,
+        values.issueDate || null,
+        values.expiryDate || null,
+        logoUrl,
+      );
 
       setCertificates((current) => sortCertificates([...current, data]));
       setModalOpen(false);
 
-      await logActivity({
+      await serverLogActivity({
         action: 'Certificate Added',
         entity: `${company.name} - ${data.name}`,
         companyId: company.id,
@@ -281,7 +268,7 @@ export default function CompanyDetailPage() {
       });
 
       if (logoUrl) {
-        await logActivity({
+        await serverLogActivity({
           action: 'Certificate Logo Updated',
           entity: `${company.name} - ${data.name}`,
           companyId: company.id,
@@ -304,23 +291,15 @@ export default function CompanyDetailPage() {
     setCertificates((current) => current.filter((item) => item.id !== certificate.id));
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        setCertificates((current) => sortCertificates([...current, certificate]));
-        setError('Supabase is not configured.');
-        return;
+      const deletedCertificate = await serverDeleteCertificate(certificate.id);
+      if (!deletedCertificate) {
+        throw new Error('Certificate not found.');
       }
 
-      const { error: deleteError } = await supabase.from('certificates').delete().eq('id', certificate.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      deletedCertificateRef.current = certificate;
+      deletedCertificateRef.current = deletedCertificate;
       setUndoVisible(true);
 
-      await logActivity({
+      await serverLogActivity({
         action: 'Certificate Deleted',
         entity: `${company.name} - ${certificate.name}`,
         companyId: company.id,
@@ -352,19 +331,10 @@ export default function CompanyDetailPage() {
 
     try {
       if (deletedCertificateRef.current) {
-        // Existing certificate undo logic
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          setError('Supabase is not configured.');
-          return;
-        }
         const payload = getCertificateInsertPayload(deletedCertificateRef.current);
-        const { data, error: insertError } = await supabase.from('certificates').insert(payload).select('*').single();
-        if (insertError) {
-          throw insertError;
-        }
+        const data = await serverInsertCertificate(payload);
         setCertificates((current) => sortCertificates([...current, data]));
-        await logActivity({
+        await serverLogActivity({
           action: 'Certificate Deletion Undone',
           entity: `${company?.name} - ${data.name}`,
           companyId: company?.id,
@@ -372,23 +342,10 @@ export default function CompanyDetailPage() {
         });
         deletedCertificateRef.current = null;
       } else if (deletedCompanyRef.current) {
-        // New company undo logic
         setCompany(deletedCompanyRef.current);
-        // Re-fetch certificates for the restored company
-        const supabase = getSupabaseClient();
-        if (supabase) {
-          const { data: certificateData, error: certificateError } = await supabase
-            .from('certificates')
-            .select('*')
-            .eq('company_id', deletedCompanyRef.current.id)
-            .order('expiry_date', { ascending: true });
-          if (certificateError) {
-            console.error('Failed to re-fetch certificates for undone company:', certificateError);
-          } else {
-            setCertificates(certificateData ?? []);
-          }
-        }
-        await logActivity({
+        const certificateData = await serverFetchCertificatesByCompany(deletedCompanyRef.current.id);
+        setCertificates(certificateData);
+        await serverLogActivity({
           action: 'Company Deletion Undone',
           entity: deletedCompanyRef.current.name,
           companyId: deletedCompanyRef.current.id,
