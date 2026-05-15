@@ -2,13 +2,16 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStoredAuthToken } from '@/lib/auth';
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(getStoredAuthToken() ? '/dashboard' : '/login');
+    const supabase = getSupabaseBrowserClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      router.replace(session ? '/dashboard' : '/login');
+    });
   }, [router]);
 
   return (

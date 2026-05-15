@@ -1,13 +1,13 @@
 'use server';
 
 import { getServerSupabaseClient } from '@/lib/supabase-server';
-import type { Certificate, LogEntry } from '@/types';
+import type { Certificate, Company, LogEntry } from '@/types';
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
-const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
 
 const cleanText = (value: string) =>
   value
@@ -26,6 +26,80 @@ const cleanOptionalText = (value: string | null | undefined) => {
   return cleaned || null;
 };
 
+type StorageBucket = 'company-logos' | 'cert-logos';
+
+const parseLogoValue = (value: string | null) => {
+  if (!value) {
+    return null;
+  }
+
+  const storageUrlMatch = value.match(
+    /^https:\/\/[^/]+\/storage\/v1\/object\/public\/(company-logos|cert-logos)\/(.+)$/,
+  );
+
+  if (storageUrlMatch) {
+    return {
+      bucket: storageUrlMatch[1] as StorageBucket,
+      path: storageUrlMatch[2],
+    };
+  }
+
+  const pathMatch = value.match(/^(company-logos|cert-logos)\/(.+)$/);
+  if (pathMatch) {
+    return {
+      bucket: pathMatch[1] as StorageBucket,
+      path: pathMatch[2],
+    };
+  }
+
+  return null;
+};
+
+const resolveLogoUrl = async (value: string | null, bucketHint?: StorageBucket) => {
+  if (!value) {
+    return null;
+  }
+
+  const supabase = getServerSupabaseClient();
+  const parsed = parseLogoValue(value);
+
+  if (parsed) {
+    const { data, error } = await supabase.storage.from(parsed.bucket).createSignedUrl(parsed.path, 60 * 60);
+    if (error || !data?.signedUrl) {
+      return value;
+    }
+
+    return data.signedUrl;
+  }
+
+  if (bucketHint && !value.startsWith('http')) {
+    const { data, error } = await supabase.storage.from(bucketHint).createSignedUrl(value, 60 * 60);
+    if (error || !data?.signedUrl) {
+      return value;
+    }
+
+    return data.signedUrl;
+  }
+
+  return value;
+};
+
+const signCompanyLogo = async <T extends { logo_url: string | null } | null>(company: T) => {
+  if (!company) {
+    return company;
+  }
+
+  return {
+    ...company,
+    logo_url: await resolveLogoUrl(company.logo_url, 'company-logos'),
+  } as T;
+};
+
+const signCertificateLogo = async <T extends { logo_url: string | null }>(certificate: T) => ({
+  ...certificate,
+  logo_url: await resolveLogoUrl(certificate.logo_url, 'cert-logos'),
+});
+
 export async function serverFetchCompanies() {
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
@@ -37,7 +111,10 @@ export async function serverFetchCompanies() {
     throw error;
   }
 
-  return data ?? [];
+  const companies = data ?? [];
+  return await Promise.all(
+    companies.map(async (company: Company) => signCompanyLogo(company)),
+  );
 }
 
 export async function serverCreateCompany(name: string, logoUrl?: string | null) {
@@ -93,7 +170,7 @@ export async function serverUpdateCompanyLogo(id: string, logoUrl: string) {
     throw error;
   }
 
-  return data;
+  return await signCompanyLogo(data);
 }
 
 export async function serverFetchDashboard() {
@@ -117,7 +194,7 @@ export async function serverFetchDashboard() {
   }
 
   return {
-    certificates: certResponse.data ?? [],
+    certificates: await Promise.all((certResponse.data ?? []).map(async (certificate) => signCertificateLogo(certificate))),
     logs: logsResponse.data ?? [],
   };
 }
@@ -150,7 +227,7 @@ export async function serverCreateCertificate(
     throw error;
   }
 
-  return data;
+  return await signCertificateLogo(data);
 }
 
 export async function serverDeleteCertificate(id: string) {
@@ -201,7 +278,7 @@ export async function serverInsertCertificate(certificate: Certificate) {
     throw error;
   }
 
-  return data;
+  return await signCertificateLogo(data);
 }
 
 export async function serverLogActivity(input: {
@@ -294,7 +371,7 @@ export async function serverFetchCompanyById(id: string) {
     throw error;
   }
 
-  return data;
+  return await signCompanyLogo(data);
 }
 
 export async function serverFetchCertificatesByCompany(companyId: string) {
@@ -309,7 +386,7 @@ export async function serverFetchCertificatesByCompany(companyId: string) {
     throw error;
   }
 
-  return data ?? [];
+  return await Promise.all((data ?? []).map(async (certificate) => signCertificateLogo(certificate)));
 }
 
 export async function serverUploadImage(
@@ -341,70 +418,6 @@ export async function serverUploadImage(
     throw error;
   }
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-  return data.publicUrl;
+  return filePath;
 }
 
-export async function serverCheckLoginLock(ip: string): Promise<{
-  isLocked: boolean;
-  minutesRemaining: number;
-}> {
-  const record = loginAttempts.get(ip);
-  if (!record) {
-    return { isLocked: false, minutesRemaining: 0 };
-  }
-
-  if (Date.now() < record.lockedUntil) {
-    const minutesRemaining = Math.ceil((record.lockedUntil - Date.now()) / 60000);
-    return { isLocked: true, minutesRemaining };
-  }
-
-  loginAttempts.delete(ip);
-  return { isLocked: false, minutesRemaining: 0 };
-}
-
-export async function serverRecordFailedAttempt(ip: string): Promise<{
-  isLocked: boolean;
-  minutesRemaining: number;
-  message: string;
-}> {
-  const record = loginAttempts.get(ip) ?? { count: 0, lockedUntil: 0 };
-
-  if (Date.now() < record.lockedUntil) {
-    const minutesRemaining = Math.ceil((record.lockedUntil - Date.now()) / 60000);
-    return {
-      isLocked: true,
-      minutesRemaining,
-      message: `Locked for ${minutesRemaining} more minute(s).`,
-    };
-  }
-
-  record.count += 1;
-
-  if (record.count >= 15) {
-    record.lockedUntil = Date.now() + 24 * 60 * 60 * 1000;
-    loginAttempts.set(ip, record);
-    return {
-      isLocked: true,
-      minutesRemaining: 1440,
-      message: 'Too many attempts. Locked for 24 hours.',
-    };
-  }
-
-  if (record.count >= 5) {
-    record.lockedUntil = Date.now() + 15 * 60 * 1000;
-    loginAttempts.set(ip, record);
-    return {
-      isLocked: true,
-      minutesRemaining: 15,
-      message: 'Too many attempts. Try again in 15 minutes.',
-    };
-  }
-
-  loginAttempts.set(ip, record);
-  return { isLocked: false, minutesRemaining: 0, message: '' };
-}
-
-export async function serverClearLoginAttempts(ip: string): Promise<void> {
-  loginAttempts.delete(ip);
-}
