@@ -13,16 +13,19 @@ interface ExpiringPanelProps {
       company_name: string;
     }
   >;
+  type?: 'expiring' | 'expired';
 }
 
-export default function ExpiringPanel({ open, onOpenChange, certificates }: ExpiringPanelProps) {
+export default function ExpiringPanel({ open, onOpenChange, certificates, type = 'expiring' }: ExpiringPanelProps) {
+  const isExpired = type === 'expired';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl rounded-[24px] border border-[#E5E5E5] bg-white p-0">
         <DialogHeader className="border-b border-[#E5E5E5] px-6 py-5">
-          <DialogTitle className="text-2xl font-semibold tracking-tight">Expiring Soon</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold tracking-tight">{isExpired ? 'Expired Certificates' : 'Expiring Soon'}</DialogTitle>
           <DialogDescription className="text-[14px] text-[#6E6E73]">
-            Certificates approaching expiry are listed here with direct links to their company records.
+            {isExpired ? 'Certificates that have already passed their expiry date.' : 'Certificates approaching expiry are listed here with direct links to their company records.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -51,7 +54,7 @@ export default function ExpiringPanel({ open, onOpenChange, certificates }: Expi
 
             {!certificates.length ? (
               <div className="px-6 py-10 text-sm text-[#6E6E73]">
-                No certificates are currently inside the warning window.
+                {isExpired ? 'No certificates are currently expired.' : 'No certificates are currently inside the warning window.'}
               </div>
             ) : null}
           </div>

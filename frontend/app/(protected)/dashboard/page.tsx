@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelType, setPanelType] = useState<'expiring' | 'expired'>('expiring');
 
   useEffect(() => {
     let active = true;
@@ -112,14 +113,17 @@ export default function DashboardPage() {
     const expiringCertificates = certificates.filter(
       (certificate) => getCertificateStatus(certificate.expiry_date, expiryThreshold) === 'expiring',
     );
-    const expired = certificates.filter((certificate) => getCertificateStatus(certificate.expiry_date, expiryThreshold) === 'expired').length;
+    const expiredCertificates = certificates.filter(
+      (certificate) => getCertificateStatus(certificate.expiry_date, expiryThreshold) === 'expired',
+    );
 
     return {
       total,
       active,
       expiring: expiringCertificates.length,
-      expired,
+      expired: expiredCertificates.length,
       expiringCertificates,
+      expiredCertificates,
       compliance: getCompliancePercentage(certificates, expiryThreshold),
     };
   }, [certificates, expiryThreshold]);
@@ -194,10 +198,14 @@ export default function DashboardPage() {
                 className="text-left"
                 onClick={() => {
                   if (isExpiringCard) {
+                    setPanelType('expiring');
+                    setPanelOpen(true);
+                  } else if (isExpiredCard) {
+                    setPanelType('expired');
                     setPanelOpen(true);
                   }
                 }}
-                disabled={!isExpiringCard}
+                disabled={!isExpiringCard && !isExpiredCard}
               >
                 <Card
                   className={`h-full ${
@@ -213,9 +221,9 @@ export default function DashboardPage() {
                       <Icon className="h-5 w-5 text-[var(--app-muted)]" />
                     </div>
                   </div>
-                  {isExpiringCard ? (
+                    {isExpiringCard || isExpiredCard ? (
                     <p className="mt-6 text-[13px] text-[#0071E3]">
-                      View expiring →
+                        {isExpiringCard ? 'View expiring →' : 'View expired →'}
                     </p>
                   ) : null}
                 </Card>
@@ -296,7 +304,12 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <ExpiringPanel open={panelOpen} onOpenChange={setPanelOpen} certificates={summary.expiringCertificates} />
+      <ExpiringPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        certificates={panelType === 'expiring' ? summary.expiringCertificates : summary.expiredCertificates}
+        type={panelType}
+      />
     </>
   );
 }

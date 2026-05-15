@@ -58,8 +58,8 @@ export async function logActivity({
 async function validateImageHeader(file: File): Promise<boolean> {
   const bytes = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  // PNG, JPEG, WebP, SVG signatures
-  return /^(89504e47|ffd8ff|52494646|3c737667|3c3f786d)/.test(hex);
+  // PNG, JPEG, WebP signatures only (SVG removed for security)
+  return /^(89504e47|ffd8ff|52494646)/.test(hex);
 }
 
 export async function uploadImage(bucket: 'company-logos' | 'cert-logos', file: File, scopeId: string) {

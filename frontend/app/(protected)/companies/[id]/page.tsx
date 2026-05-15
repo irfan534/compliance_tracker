@@ -13,7 +13,6 @@ import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Input from '@/components/ui/input';
-import { getStoredAuthToken } from '@/lib/auth';
 import { deleteCompany, logActivity, uploadImage } from '@/lib/data';
 import { getSupabaseClient } from '@/lib/supabase';
 import {
@@ -23,6 +22,14 @@ import {
   getSupabaseErrorMessage,
 } from '@/lib/utils';
 import type { Certificate, Company } from '@/types';
+
+const sanitizeInput = (s: string) =>
+  s
+    .replace(/<[^>]*>/g, ' ')             // Strip HTML tags
+    .replace(/[\u0000-\u001F\u007F]/g, ' ') // Strip control chars
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);                        // Cap at 500 chars
 
 export default function CompanyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -129,7 +136,7 @@ export default function CompanyDetailPage() {
         return;
       }
 
-      const nextName = editingName.trim();
+      const nextName = sanitizeInput(editingName);
       const { error: updateError } = await supabase.from('companies').update({ name: nextName }).eq('id', company.id);
 
       if (updateError) {
@@ -141,7 +148,6 @@ export default function CompanyDetailPage() {
         action: 'Company Name Updated',
         entity: `${company.name} -> ${nextName}`,
         companyId: company.id,
-        performedBy: getStoredAuthToken(),
       });
     } catch (caughtError) {
       setError(getSupabaseErrorMessage(caughtError, 'Unable to update company name.'));
@@ -180,7 +186,6 @@ export default function CompanyDetailPage() {
         action: 'Company Logo Updated',
         entity: company.name,
         companyId: company.id,
-        performedBy: getStoredAuthToken(),
       });
     } catch (caughtError) {
       setError(getSupabaseErrorMessage(caughtError, 'Unable to upload company logo.'));
@@ -219,7 +224,6 @@ export default function CompanyDetailPage() {
             action: 'Company Deleted',
             entity: deletedCompanyRef.current.name,
             companyId: deletedCompanyRef.current.id,
-            performedBy: getStoredAuthToken(),
           });
         }
       } catch (caughtError) {
@@ -250,8 +254,8 @@ export default function CompanyDetailPage() {
       const logoUrl = values.logoFile ? await uploadImage('cert-logos', values.logoFile, company.id) : null;
       const payload = {
         company_id: company.id,
-        name: values.name.trim(),
-        issuing_body: values.issuingBody.trim(),
+        name: sanitizeInput(values.name),
+        issuing_body: sanitizeInput(values.issuingBody),
         issue_date: values.issueDate,
         expiry_date: values.expiryDate,
         logo_url: logoUrl,
@@ -271,7 +275,6 @@ export default function CompanyDetailPage() {
         entity: `${company.name} - ${data.name}`,
         companyId: company.id,
         certId: data.id,
-        performedBy: getStoredAuthToken(),
       });
 
       if (logoUrl) {
@@ -280,7 +283,6 @@ export default function CompanyDetailPage() {
           entity: `${company.name} - ${data.name}`,
           companyId: company.id,
           certId: data.id,
-          performedBy: getStoredAuthToken(),
         });
       }
     } catch (caughtError) {
@@ -320,7 +322,6 @@ export default function CompanyDetailPage() {
         entity: `${company.name} - ${certificate.name}`,
         companyId: company.id,
         certId: certificate.id,
-        performedBy: getStoredAuthToken(),
       });
 
       if (undoTimeoutRef.current) {
@@ -365,7 +366,6 @@ export default function CompanyDetailPage() {
           entity: `${company?.name} - ${data.name}`,
           companyId: company?.id,
           certId: data.id,
-          performedBy: getStoredAuthToken(),
         });
         deletedCertificateRef.current = null;
       } else if (deletedCompanyRef.current) {
@@ -389,7 +389,6 @@ export default function CompanyDetailPage() {
           action: 'Company Deletion Undone',
           entity: deletedCompanyRef.current.name,
           companyId: deletedCompanyRef.current.id,
-          performedBy: getStoredAuthToken(),
         });
         deletedCompanyRef.current = null;
       }
