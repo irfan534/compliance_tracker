@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Download, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { serverFetchAllLogs, serverLogActivity, serverUpdateSetting } from '@/app/actions/db';
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 import Button from '@/components/ui/button';
 import BackButton from '@/components/BackButton';
 import Card from '@/components/ui/card';
@@ -61,14 +62,11 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogout = () => {
-    // Clear all session keys
-    sessionStorage.removeItem('_ct');
-    sessionStorage.removeItem('_la');
-    sessionStorage.removeItem('_fa');
-    sessionStorage.removeItem('_fl');
-    sessionStorage.clear(); // nuclear option — wipe everything
-    router.replace('/login'); // replace not push — can't go back with browser back button
+  const handleLogout = async () => {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    // Use window.location to force a full refresh and clear all caches
+    window.location.href = '/login';
   };
 
   return (
@@ -118,7 +116,7 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <Button onClick={handleLogout} className="border-red-200 bg-red-600 text-white hover:bg-red-700">
+      <Button onClick={() => void handleLogout()} className="border-red-200 bg-red-600 text-white hover:bg-red-700">
         <LogOut className="mr-2 h-4 w-4" />
         Logout
       </Button>
