@@ -7,17 +7,20 @@ export async function middleware(request: NextRequest) {
   // IMPORTANT: If adding new third-party scripts (e.g., Google Analytics, other CDNs),
   // ensure their domains are added to the appropriate CSP directives (e.g., script-src, connect-src)
   // to avoid blocking them.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseWsHost = supabaseUrl.replace('https://', '');
+
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com;
     style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: ${process.env.NEXT_PUBLIC_SUPABASE_URL};
+    img-src 'self' blob: data: ${supabaseUrl};
     font-src 'self' data:;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL} wss://${process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '')};
+    connect-src 'self' ${supabaseUrl} wss://${supabaseWsHost};
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim();
 
@@ -34,7 +37,7 @@ export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
