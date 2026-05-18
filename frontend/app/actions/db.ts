@@ -129,11 +129,10 @@ export async function serverFetchCompanies() {
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) return [];
 
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at, certificates(id, expiry_date)')
-    .or(`owner_id.eq.${user.id},id.in.(select company_id from company_members where user_id.eq.${user.id})`)
     .order('name', { ascending: true });
 
   if (error) {
@@ -208,7 +207,7 @@ export async function serverUpdateCompanyLogo(id: string, logoUrl: string) {
 }
 
 export async function serverFetchDashboard() {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const [certResponse, logsResponse] = await Promise.all([
     supabase
       .from('certificates')
@@ -390,7 +389,7 @@ export async function serverFetchAllLogs() {
 }
 
 export async function serverFetchCompanyById(id: string) {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at')
@@ -409,7 +408,7 @@ export async function serverFetchCompanyById(id: string) {
 }
 
 export async function serverFetchCertificatesByCompany(companyId: string) {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('certificates')
     .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at')
