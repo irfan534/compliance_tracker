@@ -14,6 +14,27 @@ ComplianceTracker is a Next.js 15 application with App Router, TypeScript, Supab
 | npm | 9+ |
 | A Supabase account | [supabase.com](https://supabase.com) |
 
+### Project Verification
+
+Before proceeding with the setup steps, verify your environment and project structure:
+
+1. **Check Next.js Installed**
+   Run: `cat frontend/package.json` (or `type` on Windows)
+   Look for:
+   ```json
+   "dependencies": {
+     "next": "^15.x.x",
+     "react": "...",
+     "react-dom": "..."
+   }
+   ```
+   If `next` is missing, install it: `npm install next react react-dom`
+
+2. **Verify App Structure**
+   Ensure you have the `app/` directory inside `frontend/` (this project uses the App Router).
+   
+   If neither `app/` nor `pages/` exists, the project is not yet recognized as a Next.js application.
+
 ---
 
 ## Step 1 — Create a Supabase Project

@@ -39,7 +39,7 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
                   <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.issue_date)}</td>
                   <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.expiry_date)}</td>
                   <td className="px-4 py-4">
-                    <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status)}</Badge>
+                    <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status, certificate.expiry_date)}</Badge>
                   </td>
                   <td className="px-4 py-4">
                     {certificate.logo_url ? (

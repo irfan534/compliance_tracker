@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getDaysUntilExpiry, cn } from '@/lib/utils';
 import type { Certificate } from '@/types';
 
 interface ExpiringPanelProps {
@@ -18,6 +18,18 @@ interface ExpiringPanelProps {
 
 export default function ExpiringPanel({ open, onOpenChange, certificates, type = 'expiring' }: ExpiringPanelProps) {
   const isExpired = type === 'expired';
+
+  const getExpiryCountdown = (date: string | null) => {
+    const days = getDaysUntilExpiry(date);
+    if (days === Number.POSITIVE_INFINITY) return null;
+    if (days < 0) {
+      const daysPast = Math.abs(days);
+      return `${daysPast} ${daysPast === 1 ? 'day' : 'days'} ago`;
+    }
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Tomorrow';
+    return `In ${days} days`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,7 +59,12 @@ export default function ExpiringPanel({ open, onOpenChange, certificates, type =
               >
                 <span className="font-medium text-[#1D1D1F]">{certificate.name}</span>
                 <span className="text-[#6E6E73]">{certificate.issuing_body || 'Not specified'}</span>
-                <span className="text-[#1D1D1F]">{formatDate(certificate.expiry_date)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[#1D1D1F]">{formatDate(certificate.expiry_date)}</span>
+                  <span className={cn('text-[11px] font-medium', isExpired ? 'text-[#FF3B30]' : 'text-[#FF9500]')}>
+                    {getExpiryCountdown(certificate.expiry_date)}
+                  </span>
+                </div>
                 <span className="text-[#6E6E73]">{certificate.company_name}</span>
               </Link>
             ))}

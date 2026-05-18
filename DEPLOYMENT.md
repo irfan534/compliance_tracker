@@ -2,6 +2,11 @@
 
 ## Pre-Deployment
 
+### 0. Verification
+
+- [ ] **Check Next.js Installed**: Ensure `next` is in `package.json` dependencies.
+- [ ] **Verify App Structure**: Confirm the `app/` directory exists (App Router).
+
 ### 1. Environment Variables
 
 Set these in your hosting platform's dashboard (never commit to git):

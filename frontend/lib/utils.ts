@@ -66,9 +66,22 @@ export const getStatusBadgeVariant = (status: string): 'default' | 'secondary' |
   return 'destructive';
 };
 
-export const getStatusLabel = (status: 'active' | 'expiring' | 'expired'): string => {
+export const getStatusLabel = (
+  status: 'active' | 'expiring' | 'expired',
+  expiryDate?: string | Date | null,
+): string => {
   if (status === 'active') return 'Active';
-  if (status === 'expiring') return 'Expiring';
+  const days = getDaysUntilExpiry(expiryDate ?? null);
+  if (status === 'expiring') {
+    if (days === Number.POSITIVE_INFINITY) return 'Expiring';
+    if (days <= 0) return 'Expiring Today';
+    return `Expiring in ${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+  if (status === 'expired') {
+    if (days === Number.POSITIVE_INFINITY) return 'Expired';
+    const daysPast = Math.abs(days);
+    return `Expired ${daysPast} ${daysPast === 1 ? 'day' : 'days'} ago`;
+  }
   return 'Expired';
 };
 

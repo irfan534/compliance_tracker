@@ -60,12 +60,14 @@ npm install
 cp ../.env.example .env.local
 # Edit .env.local with your Supabase credentials
 
-# 3. Run schema in Supabase SQL Editor
+# 3. Verify Next.js installation and app structure (app/)
+
+# 4. Run schema in Supabase SQL Editor
 #    (paste contents of supabase/schema.sql)
 
-# 4. Create a user in Supabase Dashboard → Authentication → Users
+# 5. Create a user in Supabase Dashboard → Authentication → Users
 
-# 5. Start the dev server
+# 6. Start the dev server
 npm run dev
 ```
 
