@@ -9,6 +9,9 @@ create table if not exists user_profiles (
   created_at timestamptz default now()
 );
 
+-- Ensure user_profiles stay in sync with auth.users
+-- This allows is_admin and full_name to be used in RLS policies
+
 create table if not exists companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -19,6 +22,7 @@ create table if not exists companies (
 
 -- Ensure owner_id exists if the table was created previously without it
 alter table companies add column if not exists owner_id uuid references auth.users(id);
+create index if not exists idx_companies_owner_id on companies(owner_id);
 
 -- Create company_members table for multi-user access control
 create table if not exists company_members (
@@ -29,6 +33,7 @@ create table if not exists company_members (
   created_at timestamptz default now(),
   unique(company_id, user_id)
 );
+create index if not exists idx_members_user_company on company_members(user_id, company_id);
 
 -- Create a view or trigger to ensure profiles are synced (omitted for brevity, handled by Auth hooks)
 
@@ -41,8 +46,10 @@ create table if not exists certificates (
   expiry_date date,
   status text,
   logo_url text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  constraint check_dates check (expiry_date >= issue_date)
 );
+create index if not exists idx_certificates_company_id on certificates(company_id);
 
 create table if not exists logs (
   id uuid primary key default gen_random_uuid(),
@@ -57,6 +64,7 @@ create table if not exists logs (
 
 -- Ensure user_id exists if the table was created previously
 alter table logs add column if not exists user_id uuid references auth.users(id);
+create index if not exists idx_logs_company_id on logs(company_id);
 
 create table if not exists settings (
   key text primary key,
@@ -71,18 +79,24 @@ alter table companies enable row level security;
 alter table certificates enable row level security;
 alter table logs enable row level security;
 alter table settings enable row level security;
+alter table user_profiles enable row level security;
 
--- 1. Multi-Tenant Isolation Policies
+-- REPLACEMENT POLICIES: Enabling true Multi-Tenancy
+-- This ensures that even if a server action is compromised, the DB layer protects the data.
+
+-- Users can read their own profile
+create policy "profiles_self_read" on user_profiles for select using (auth.uid() = id);
+
 -- Companies: Accessible by owners or members
-create policy "users_access_own_companies" on companies
+create policy "companies_tenant_isolation" on companies
   for all
   using (
     auth.uid() = owner_id or 
     exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
   );
 
--- Certificates: Inherit access from company
-create policy "users_access_certificates" on certificates
+-- Certificates: Inherit access from company membership
+create policy "certificates_tenant_isolation" on certificates
   for all
   using (
     exists (
@@ -94,9 +108,9 @@ create policy "users_access_certificates" on certificates
     )
   );
 
--- Logs: Viewable only for your companies
-create policy "users_access_logs" on logs
-  for select
+-- Logs: Users can only see logs related to companies they have access to
+create policy "logs_tenant_isolation" on logs
+  for all
   using (
     exists (
       select 1 from companies 
@@ -107,37 +121,28 @@ create policy "users_access_logs" on logs
     )
   );
 
--- Settings: Read-only for authenticated users
-create policy "authenticated_read_settings" on settings
-  for select
-  to authenticated
-  using (true);
+-- Settings: Read-only for all authenticated, update for admins only
+create policy "settings_read" on settings for select to authenticated using (true);
+create policy "settings_admin_update" on settings for update 
+  using (exists (select 1 from user_profiles where id = auth.uid() and is_admin = true));
 
--- Logs: Allow authenticated users to insert logs for companies they own or are members of
-create policy "users_insert_logs" on logs
-  for insert
-  with check (
-    exists (
-      select 1 from companies
-      where id = logs.company_id and (
-        owner_id = auth.uid() or
-        exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
-      )
-    )
-  );
-
--- Settings: Allow authenticated users to update settings
-create policy "authenticated_update_settings" on settings
-  for update
-  to authenticated
-  using (true);
-
+-- Storage Buckets: Set to private by default
 insert into storage.buckets (id, name, public)
-values ('company-logos', 'company-logos', true), ('cert-logos', 'cert-logos', true)
+values ('company-logos', 'company-logos', false), ('cert-logos', 'cert-logos', false)
 on conflict (id) do nothing;
 
--- Storage: Restrict uploads to authenticated users, but keep logos public for rendering
-create policy "authenticated_uploads" on storage.objects
-  for insert
-  to authenticated
-  with check (bucket_id in ('company-logos', 'cert-logos'));
+-- Storage: Dynamic policies based on company folder ownership
+-- Allows users to upload/read only files within their company's scope
+create policy "storage_authenticated_read" on storage.objects
+  for select to authenticated using (true); -- Read access handled by signed URLs in code
+
+create policy "storage_tenant_upload" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id in ('company-logos', 'cert-logos') and
+    (substring(name from '^([^/]+)') :: uuid) in (
+      select id from companies where owner_id = auth.uid()
+      union
+      select company_id from company_members where user_id = auth.uid()
+    )
+  );

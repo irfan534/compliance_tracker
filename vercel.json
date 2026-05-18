@@ -9,6 +9,8 @@
           "key": "Access-Control-Allow-Origin",
           "value": "https://compliance-tracker-jet.vercel.app"
         },
+        { "key": "X-DNS-Prefetch-Control", "value": "on" },
+        { "key": "X-Download-Options", "value": "noopen" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
       ]
