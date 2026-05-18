@@ -1,0 +1,17 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Server", "value": "webserver" },
+        { "key": "X-Powered-By", "value": "" },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://compliance-tracker-jet.vercel.app"
+        },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
+  ]
+}
