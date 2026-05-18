@@ -23,7 +23,7 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
             <th className="px-4 py-3 font-medium">Issue Date</th>
             <th className="px-4 py-3 font-medium">Expiry Date</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Certificate Logo</th>
+            <th className="px-4 py-3 font-medium text-center">Certificate Logo</th>
             <th className="px-4 py-3 font-medium text-right">Delete</th>
           </tr>
         </thead>
@@ -41,39 +41,41 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
                   <td className="px-4 py-4">
                     <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status, certificate.expiry_date)}</Badge>
                   </td>
-                  <td className="px-4 py-4">
-                    {certificate.logo_url ? (
-                      <div
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '8px',
-                          overflow: 'hidden',
-                          background: '#F5F5F7',
-                          border: '1px solid #E5E5E5',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
-                      >
-                        <img
-                          src={certificate.logo_url}
-                          alt={`${certificate.name} logo`}
+                  <td className="px-4 py-6">
+                    <div className="flex items-center justify-center">
+                      {certificate.logo_url ? (
+                        <div
                           style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            objectPosition: 'center',
-                            padding: '3px'
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            background: '#F5F5F7',
+                            border: '1px solid #E5E5E5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
                           }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7]">
-                        <Building2 className="h-5 w-5 text-[#6E6E73]" />
-                      </div>
-                    )}
+                        >
+                          <img
+                            src={certificate.logo_url}
+                            alt={`${certificate.name} logo`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              objectPosition: 'center',
+                              padding: '6px'
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-20 w-20 items-center justify-center rounded-[1.25rem] bg-[#F5F5F7]">
+                          <Building2 className="h-10 w-10 text-[#6E6E73]" />
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <Button
