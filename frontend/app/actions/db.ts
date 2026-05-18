@@ -1,13 +1,37 @@
 'use server';
 
 import { getServerSupabaseClient } from '@/lib/supabase-server';
+import { getSupabaseServerClient } from '@/lib/supabase-server-auth';
 import type { Certificate, Company, LogEntry } from '@/types';
 
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+/**
+ * SECURITY GATE: Verifies that the current session user has access to a company.
+ * Prevents IDOR when using the Service Role client.
+ */
+async function verifyMembership(companyId: string) {
+  const authClient = await getSupabaseServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
 
+  const serviceClient = getServerSupabaseClient();
+  const { data } = await serviceClient
+    .from('companies')
+    .select('id, owner_id, company_members(user_id)')
+    .eq('id', companyId)
+    .single();
+
+  const isOwner = data?.owner_id === user.id;
+  const isMember = data?.company_members?.some((m: any) => m.user_id === user.id);
+
+  if (!isOwner && !isMember) {
+    throw new Error('Forbidden: You do not have access to this company.');
+  }
+  return user;
+}
 
 const cleanText = (value: string) =>
   value
@@ -101,10 +125,15 @@ const signCertificateLogo = async <T extends { logo_url: string | null }>(certif
 });
 
 export async function serverFetchCompanies() {
+  const authClient = await getSupabaseServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) return [];
+
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at, certificates(id, expiry_date)')
+    .or(`owner_id.eq.${user.id},id.in.(select company_id from company_members where user_id.eq.${user.id})`)
     .order('name', { ascending: true });
 
   if (error) {
@@ -118,10 +147,14 @@ export async function serverFetchCompanies() {
 }
 
 export async function serverCreateCompany(name: string, logoUrl?: string | null) {
+  const authClient = await getSupabaseServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('companies')
-    .insert([{ name: cleanText(name), logo_url: logoUrl || null }])
+    .insert([{ name: cleanText(name), logo_url: logoUrl || null, owner_id: user.id }])
     .select()
     .single();
 
@@ -133,6 +166,7 @@ export async function serverCreateCompany(name: string, logoUrl?: string | null)
 }
 
 export async function serverDeleteCompany(id: string) {
+  await verifyMembership(id);
   const supabase = getServerSupabaseClient();
   const { error } = await supabase.from('companies').delete().eq('id', id);
 
@@ -420,4 +454,3 @@ export async function serverUploadImage(
 
   return filePath;
 }
-
