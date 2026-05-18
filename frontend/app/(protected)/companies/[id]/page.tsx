@@ -150,7 +150,10 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      const logoUrl = await serverUploadImage('company-logos', file, // Pass File object directly
+      const base64 = await fileToBase64(file);
+      const logoUrl = await serverUploadImage(
+        'company-logos',
+        { base64, mimeType: file.type, size: file.size },
         company.id,
       );
       const updatedCompany = await serverUpdateCompanyLogo(company.id, logoUrl);
@@ -221,7 +224,10 @@ export default function CompanyDetailPage() {
     try {
       let logoUrl: string | null = null;
       if (values.logoFile) {
-        logoUrl = await serverUploadImage('cert-logos', values.logoFile, // Pass File object directly
+        const base64 = await fileToBase64(values.logoFile);
+        logoUrl = await serverUploadImage(
+          'cert-logos',
+          { base64, mimeType: values.logoFile.type, size: values.logoFile.size },
           company.id,
         );
       }
