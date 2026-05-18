@@ -18,12 +18,12 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
       <table className="min-w-full text-left">
         <thead>
           <tr className="border-b border-[#E5E5E5] text-[11px] uppercase tracking-[0.22em] text-[#6E6E73]">
+            <th className="px-4 py-3 font-medium text-center">Logo</th>
             <th className="px-4 py-3 font-medium">Certificate Name</th>
             <th className="px-4 py-3 font-medium">Issuing Body</th>
             <th className="px-4 py-3 font-medium">Issue Date</th>
             <th className="px-4 py-3 font-medium">Expiry Date</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium text-center">Certificate Logo</th>
             <th className="px-4 py-3 font-medium text-right">Delete</th>
           </tr>
         </thead>
@@ -34,21 +34,14 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
 
               return (
                 <tr key={certificate.id} className="border-b border-[#F5F5F7] text-sm">
-                  <td className="px-4 py-4 font-medium text-[#1D1D1F]">{certificate.name}</td>
-                  <td className="px-4 py-4 text-[#6E6E73]">{certificate.issuing_body || 'Not specified'}</td>
-                  <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.issue_date)}</td>
-                  <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.expiry_date)}</td>
-                  <td className="px-4 py-4">
-                    <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status, certificate.expiry_date)}</Badge>
-                  </td>
                   <td className="px-4 py-6">
                     <div className="flex items-center justify-center">
                       {certificate.logo_url ? (
                         <div
                           style={{
-                            width: '80px',
-                            height: '80px',
-                            borderRadius: '12px',
+                            width: '120px',
+                            height: '120px',
+                            borderRadius: '20px',
                             overflow: 'hidden',
                             background: '#F5F5F7',
                             border: '1px solid #E5E5E5',
@@ -66,16 +59,23 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
                               height: '100%',
                               objectFit: 'contain',
                               objectPosition: 'center',
-                              padding: '6px'
+                              padding: '10px'
                             }}
                           />
                         </div>
                       ) : (
-                        <div className="flex h-20 w-20 items-center justify-center rounded-[1.25rem] bg-[#F5F5F7]">
-                          <Building2 className="h-10 w-10 text-[#6E6E73]" />
+                        <div className="flex h-[120px] w-[120px] items-center justify-center rounded-[1.5rem] bg-[#F5F5F7]">
+                          <Building2 className="h-16 w-16 text-[#6E6E73]" />
                         </div>
                       )}
                     </div>
+                  </td>
+                  <td className="px-4 py-4 font-medium text-[#1D1D1F]">{certificate.name}</td>
+                  <td className="px-4 py-4 text-[#6E6E73]">{certificate.issuing_body || 'Not specified'}</td>
+                  <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.issue_date)}</td>
+                  <td className="px-4 py-4 text-[#1D1D1F]">{formatDate(certificate.expiry_date)}</td>
+                  <td className="px-4 py-4">
+                    <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status, certificate.expiry_date)}</Badge>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <Button
