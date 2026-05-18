@@ -13,12 +13,12 @@ create table if not exists companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   logo_url text,
-  owner_id uuid references auth.users(id),
+  owner_id uuid references auth.users(id) on delete set null,
   created_at timestamptz default now()
 );
 
 -- Ensure owner_id exists if the table was created previously without it
-alter table companies add column if not exists owner_id uuid references auth.users(id);
+alter table companies add column if not exists owner_id uuid references auth.users(id) on delete set null;
 
 -- Create company_members table for multi-user access control
 create table if not exists company_members (
@@ -50,13 +50,13 @@ create table if not exists logs (
   entity text,
   company_id uuid,
   cert_id uuid,
-  user_id uuid references auth.users(id),
+  user_id uuid references auth.users(id) on delete set null,
   performed_by text,
   created_at timestamptz default now()
 );
 
 -- Ensure user_id exists if the table was created previously
-alter table logs add column if not exists user_id uuid references auth.users(id);
+alter table logs add column if not exists user_id uuid references auth.users(id) on delete set null;
 
 create table if not exists settings (
   key text primary key,
