@@ -29,17 +29,9 @@ import {
   getCertificateInsertPayload,
   getCertificateStatus,
   getCompliancePercentage,
-  getSupabaseErrorMessage,
-} from '@/lib/utils';
+  getSupabaseErrorMessage, sanitizeInput,
+} from '@/lib/utils'; // Import sanitizeInput from utils
 import type { Certificate, Company } from '@/types';
-
-const sanitizeInput = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, ' ')             // Strip HTML tags
-    .replace(/[\u0000-\u001F\u007F]/g, ' ') // Strip control chars
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 500);                        // Cap at 500 chars
 
 const fileToBase64 = async (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -158,14 +150,7 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      const base64 = await fileToBase64(file);
-      const logoUrl = await serverUploadImage(
-        'company-logos',
-        {
-          base64,
-          mimeType: file.type,
-          size: file.size,
-        },
+      const logoUrl = await serverUploadImage('company-logos', file, // Pass File object directly
         company.id,
       );
       const updatedCompany = await serverUpdateCompanyLogo(company.id, logoUrl);
@@ -236,14 +221,7 @@ export default function CompanyDetailPage() {
     try {
       let logoUrl: string | null = null;
       if (values.logoFile) {
-        const base64 = await fileToBase64(values.logoFile);
-        logoUrl = await serverUploadImage(
-          'cert-logos',
-          {
-            base64,
-            mimeType: values.logoFile.type,
-            size: values.logoFile.size,
-          },
+        logoUrl = await serverUploadImage('cert-logos', values.logoFile, // Pass File object directly
           company.id,
         );
       }

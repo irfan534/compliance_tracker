@@ -72,29 +72,72 @@ alter table certificates enable row level security;
 alter table logs enable row level security;
 alter table settings enable row level security;
 
--- RLS Policies: Block all access from the anonymous key.
--- All legitimate database access is expected to come from server actions
--- using the SUPABASE_SERVICE_ROLE_KEY, which bypasses RLS.
-create policy "block_anon" on companies
-  for all using (false) with check (false);
+-- 1. Multi-Tenant Isolation Policies
+-- Companies: Accessible by owners or members
+create policy "users_access_own_companies" on companies
+  for all
+  using (
+    auth.uid() = owner_id or 
+    exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
+  );
 
-create policy "block_anon" on certificates
-  for all using (false) with check (false);
+-- Certificates: Inherit access from company
+create policy "users_access_certificates" on certificates
+  for all
+  using (
+    exists (
+      select 1 from companies 
+      where id = certificates.company_id and (
+        owner_id = auth.uid() or 
+        exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
+      )
+    )
+  );
 
-create policy "block_anon" on logs
-  for all using (false) with check (false);
+-- Logs: Viewable only for your companies
+create policy "users_access_logs" on logs
+  for select
+  using (
+    exists (
+      select 1 from companies 
+      where id = logs.company_id and (
+        owner_id = auth.uid() or 
+        exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
+      )
+    )
+  );
 
-create policy "block_anon" on settings
-  for all using (false) with check (false);
+-- Settings: Read-only for authenticated users
+create policy "authenticated_read_settings" on settings
+  for select
+  to authenticated
+  using (true);
 
--- Storage Buckets: Set to private by default
+-- Logs: Allow authenticated users to insert logs for companies they own or are members of
+create policy "users_insert_logs" on logs
+  for insert
+  with check (
+    exists (
+      select 1 from companies
+      where id = logs.company_id and (
+        owner_id = auth.uid() or
+        exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
+      )
+    )
+  );
+
+-- Settings: Allow authenticated users to update settings
+create policy "authenticated_update_settings" on settings
+  for update
+  to authenticated
+  using (true);
+
 insert into storage.buckets (id, name, public)
-values ('company-logos', 'company-logos', false), ('cert-logos', 'cert-logos', false)
+values ('company-logos', 'company-logos', true), ('cert-logos', 'cert-logos', true)
 on conflict (id) do nothing;
 
--- Storage Policies: Block all access from the anonymous key.
--- Access to storage is managed by signed URLs generated server-side.
-create policy "block_anon_storage" on storage.objects
-  for all
-  using (false)
-  with check (false);
+-- Storage: Restrict uploads to authenticated users, but keep logos public for rendering
+create policy "authenticated_uploads" on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id in ('company-logos', 'cert-logos'));

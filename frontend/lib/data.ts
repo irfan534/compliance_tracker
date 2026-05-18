@@ -1,27 +1,15 @@
-import { getSupabaseClient as getNullableSupabaseClient } from '@/lib/supabase';
+// This file contains data access functions for the application.
+// All functions here should use a Supabase client that respects Row Level Security (RLS).
+// The `SUPABASE_SERVICE_ROLE_KEY` should NOT be used here, as it bypasses RLS.
+
+import { createServerClientWithRLS } from '@/lib/supabase-server-with-rls';
+import { sanitizeInput } from '@/lib/utils'; // Centralized sanitization
 import type { Company, Certificate, LogEntry } from '@/types';
 
-const getSupabaseClient = () => {
-  const client = getNullableSupabaseClient();
+// Helper to get an RLS-aware Supabase client for Server Actions/Components.
+// This client uses the user's session cookies and enforces RLS.
+const getSupabaseClientForRLS = () => createServerClientWithRLS();
 
-  if (!client) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  return client;
-};
-
-/**
- * Store these fields as plain text, not HTML.
- * Strip tags/control chars, normalize whitespace, and cap length.
- */
-const clean = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/[\u0000-\u001F\u007F]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 500);
 
 interface LogActivityInput {
   action: string;
@@ -38,7 +26,7 @@ export async function logActivity({
   certId,
   performedBy,
 }: LogActivityInput) {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { error } = await supabase.from('logs').insert({
     action,
     entity: entity || null,
@@ -71,10 +59,10 @@ export async function uploadImage(bucket: 'company-logos' | 'cert-logos', file: 
   // 2. Validate magic bytes
   const isValid = await validateImageHeader(file);
   if (!isValid) {
-    throw new Error('Invalid file type. Only JPEG, PNG, WebP, and SVG are allowed.');
+    throw new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'); // SVG removed for security
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
   
   // 3. Randomize filename to prevent path traversal or overwrites
@@ -96,7 +84,7 @@ export async function uploadImage(bucket: 'company-logos' | 'cert-logos', file: 
 
 // ==== COMPANIES ====
 export async function fetchCompanies(): Promise<Company[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at')
@@ -107,7 +95,7 @@ export async function fetchCompanies(): Promise<Company[]> {
 }
 
 export async function fetchCompanyById(id: string): Promise<Company | null> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at')
@@ -122,10 +110,13 @@ export async function fetchCompanyById(id: string): Promise<Company | null> {
 }
 
 export async function createCompany(name: string, logoUrl?: string | null): Promise<Company> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
+  const { data: { user } } = await supabase.auth.getUser(); // Get current user for owner_id
+  if (!user) throw new Error('User not authenticated.'); // Ensure user is authenticated
+
   const { data, error } = await supabase
     .from('companies')
-    .insert([{ name: clean(name), logo_url: logoUrl || null }])
+    .insert([{ name: sanitizeInput(name), logo_url: logoUrl || null, owner_id: user.id }]) // Set owner_id to current user
     .select()
     .single();
 
@@ -134,10 +125,10 @@ export async function createCompany(name: string, logoUrl?: string | null): Prom
 }
 
 export async function updateCompanyName(id: string, name: string): Promise<Company> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('companies')
-    .update({ name: clean(name) })
+    .update({ name: sanitizeInput(name) }) // Use centralized sanitization
     .eq('id', id)
     .select()
     .single();
@@ -147,7 +138,7 @@ export async function updateCompanyName(id: string, name: string): Promise<Compa
 }
 
 export async function updateCompanyLogo(id: string, logoUrl: string): Promise<Company> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('companies')
     .update({ logo_url: logoUrl })
@@ -160,7 +151,7 @@ export async function updateCompanyLogo(id: string, logoUrl: string): Promise<Co
 }
 
 export async function deleteCompany(id: string): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { error } = await supabase.from('companies').delete().eq('id', id);
 
   if (error) throw error;
@@ -168,7 +159,7 @@ export async function deleteCompany(id: string): Promise<void> {
 
 // ==== CERTIFICATES ====
 export async function fetchCertificatesByCompanyId(companyId: string): Promise<Certificate[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('certificates')
     .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at')
@@ -180,7 +171,7 @@ export async function fetchCertificatesByCompanyId(companyId: string): Promise<C
 }
 
 export async function fetchAllCertificates(): Promise<Certificate[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('certificates')
     .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at')
@@ -191,7 +182,7 @@ export async function fetchAllCertificates(): Promise<Certificate[]> {
 }
 
 export async function fetchCertificateById(id: string): Promise<Certificate | null> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('certificates')
     .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at')
@@ -213,14 +204,14 @@ export async function createCertificate(
   expiryDate: string | null,
   logoUrl: string | null,
 ): Promise<Certificate> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('certificates')
     .insert([
       {
         company_id: companyId,
-        name: clean(name),
-        issuing_body: issuingBody ? clean(issuingBody) : null,
+        name: sanitizeInput(name), // Use centralized sanitization
+        issuing_body: issuingBody ? sanitizeInput(issuingBody) : null, // Use centralized sanitization
         issue_date: issueDate || null,
         expiry_date: expiryDate || null,
         logo_url: logoUrl || null,
@@ -236,8 +227,8 @@ export async function createCertificate(
 export async function deleteCertificate(id: string): Promise<Certificate | null> {
   const cert = await fetchCertificateById(id);
   if (!cert) return null;
-
-  const supabase = getSupabaseClient();
+  // The fetchCertificateById already uses the RLS-aware client, so no need to re-check here.
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { error } = await supabase.from('certificates').delete().eq('id', id);
 
   if (error) throw error;
@@ -245,7 +236,7 @@ export async function deleteCertificate(id: string): Promise<Certificate | null>
 }
 
 export async function insertCertificate(cert: Certificate): Promise<Certificate> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('certificates')
     .insert([cert])
@@ -258,7 +249,7 @@ export async function insertCertificate(cert: Certificate): Promise<Certificate>
 
 // ==== SETTINGS ====
 export async function fetchSettings(): Promise<Record<string, string>> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase.from('settings').select('*');
   // Settings are keys - selective select not applicable to key/value pairs
   if (error) throw error;
@@ -271,17 +262,17 @@ export async function fetchSettings(): Promise<Record<string, string>> {
 }
 
 export async function updateSetting(key: string, value: string): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { error } = await supabase
     .from('settings')
-    .upsert({ key, value: clean(value) }, { onConflict: 'key' });
+    .upsert({ key, value: sanitizeInput(value) }, { onConflict: 'key' }); // Use centralized sanitization
 
   if (error) throw error;
 }
 
 // ==== LOGS ====
 export async function fetchLogs(limit = 20, offset = 0): Promise<{ data: LogEntry[]; total: number }> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
 
   const { data, error, count } = await supabase
     .from('logs')
@@ -298,7 +289,7 @@ export async function fetchLogsByAction(
   limit = 20,
   offset = 0,
 ): Promise<{ data: LogEntry[]; total: number }> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
 
   const { data, error, count } = await supabase
     .from('logs')
@@ -316,7 +307,7 @@ export async function fetchLogsByCompany(
   limit = 20,
   offset = 0,
 ): Promise<{ data: LogEntry[]; total: number }> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
 
   const { data, error, count } = await supabase
     .from('logs')
@@ -330,7 +321,7 @@ export async function fetchLogsByCompany(
 }
 
 export async function fetchAllLogs(): Promise<LogEntry[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClientForRLS(); // Use RLS-aware client
   const { data, error } = await supabase
     .from('logs')
     .select('*')

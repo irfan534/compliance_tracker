@@ -95,6 +95,18 @@ export const getInitials = (value: string) =>
     .map((part) => part[0]?.toUpperCase() || '')
     .join('');
 
+/**
+ * Production-grade input sanitization to prevent XSS.
+ * Strips HTML tags, control characters, and normalizes whitespace.
+ */
+export const sanitizeInput = (s: string): string =>
+  s
+    .replace(/<[^>]*>/g, ' ')             // Strip HTML tags
+    .replace(/[\u0000-\u001F\u007F]/g, ' ') // Strip control chars
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);                        // Standard length cap
+
 export const getCompliancePercentage = (
   certificates: Array<{ expiry_date: string | null }>,
   thresholdDays = 30,
