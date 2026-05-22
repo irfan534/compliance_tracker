@@ -33,12 +33,20 @@ export const getDaysUntilExpiry = (expiryDate: string | Date | null): number => 
     return Number.POSITIVE_INFINITY;
   }
 
-  const expiry = typeof expiryDate === 'string' ? new Date(expiryDate) : expiryDate;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const date = typeof expiryDate === 'string' ? new Date(expiryDate) : expiryDate;
 
-  const diffTime = expiry.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Normalize both to midnight to avoid timezone/DST shift issues.
+  // Using UTC values ensures we compare calendar days regardless of local timezone.
+  // String parsing "YYYY-MM-DD" results in UTC midnight, so we use getUTC methods for strings.
+  const targetUTC = typeof expiryDate === 'string'
+    ? Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+    : Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const diffTime = targetUTC - todayUTC;
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };
 
 export const getCertificateStatus = (
