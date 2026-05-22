@@ -63,6 +63,8 @@ export default function CompanyDetailPage() {
   const [undoing, setUndoing] = useState(false);
   const [deletingCompany, setDeletingCompany] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [certDeleteConfirmOpen, setCertDeleteConfirmOpen] = useState(false);
+  const [certToDelete, setCertToDelete] = useState<Certificate | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -266,11 +268,19 @@ export default function CompanyDetailPage() {
     }
   };
 
-  const handleDeleteCertificate = async (certificate: Certificate) => {
-    if (!company) {
+  const handleDeleteCertificate = (certificate: Certificate) => {
+    setCertToDelete(certificate);
+    setCertDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteCertificate = async () => {
+    if (!company || !certToDelete) {
       return;
     }
 
+    const certificate = certToDelete;
+    setCertDeleteConfirmOpen(false);
+    setCertToDelete(null);
     setError(null);
     setCertificates((current) => current.filter((item) => item.id !== certificate.id));
 
@@ -280,24 +290,12 @@ export default function CompanyDetailPage() {
         throw new Error('Certificate not found.');
       }
 
-      deletedCertificateRef.current = deletedCertificate;
-      setUndoVisible(true);
-
       await serverLogActivity({
         action: 'Certificate Deleted',
         entity: `${company.name} - ${certificate.name}`,
         companyId: company.id,
         certId: certificate.id,
       });
-
-      if (undoTimeoutRef.current) {
-        window.clearTimeout(undoTimeoutRef.current);
-      }
-
-      undoTimeoutRef.current = window.setTimeout(() => {
-        deletedCertificateRef.current = null;
-        setUndoVisible(false);
-      }, 5000);
     } catch (caughtError) {
       setCertificates((current) => sortCertificates([...current, certificate]));
       setError(getSupabaseErrorMessage(caughtError, 'Unable to delete certificate.'));
@@ -495,9 +493,9 @@ export default function CompanyDetailPage() {
             </div>
             
             <DialogHeader className="mb-8 space-y-3 p-0">
-              <DialogTitle className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Delete Company?</DialogTitle>
+              <DialogTitle className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Delete this item?</DialogTitle>
               <DialogDescription className="text-[15px] leading-relaxed text-[#6E6E73]">
-                Are you sure you want to delete this company and all its certificates? This action can be undone within 5 seconds.
+                This action cannot be undone. The item will be permanently removed.
               </DialogDescription>
             </DialogHeader>
 
@@ -506,12 +504,48 @@ export default function CompanyDetailPage() {
                 className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]" 
                 onClick={() => void handleDeleteCompany()}
               >
-                Delete Company
+                Delete
               </Button>
               <Button 
                 variant="ghost" 
                 className="h-14 w-full rounded-2xl text-[17px] font-medium text-[#6E6E73] transition-all hover:bg-[#F5F5F7] active:scale-[0.98]"
                 onClick={() => setDeleteConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={certDeleteConfirmOpen} onOpenChange={setCertDeleteConfirmOpen}>
+        <DialogContent className="max-w-[400px] rounded-[32px] border border-[#E5E5E5] bg-white p-8 overflow-hidden shadow-2xl">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[24px] bg-[#FFF1F0]">
+              <Trash2 className="h-10 w-10 text-[#FF3B30]" />
+            </div>
+            
+            <DialogHeader className="mb-8 space-y-3 p-0">
+              <DialogTitle className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Delete this item?</DialogTitle>
+              <DialogDescription className="text-[15px] leading-relaxed text-[#6E6E73]">
+                This action cannot be undone. The item will be permanently removed.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex w-full flex-col gap-3">
+              <Button 
+                className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]" 
+                onClick={() => void handleConfirmDeleteCertificate()}
+              >
+                Delete
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="h-14 w-full rounded-2xl text-[17px] font-medium text-[#6E6E73] transition-all hover:bg-[#F5F5F7] active:scale-[0.98]"
+                onClick={() => {
+                  setCertDeleteConfirmOpen(false);
+                  setCertToDelete(null);
+                }}
               >
                 Cancel
               </Button>
