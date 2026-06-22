@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
@@ -11,7 +11,7 @@ import Card from '@/components/ui/card';
 import Input from '@/components/ui/input';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { appName } = useAppSettings();
@@ -149,5 +149,21 @@ export default function LoginPage() {
         </Card>
       </motion.div>
     </main>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#F5F5F7] px-6">
+      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#D2D2D7] border-t-[#0071E3]" />
+    </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
