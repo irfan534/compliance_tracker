@@ -9,7 +9,6 @@ import {
   serverDeleteCompany,
   serverFetchCertificatesByCompany,
   serverFetchCompanyById,
-  serverInsertCertificate,
   serverLogActivity,
   serverUpdateCompanyLogo,
   serverUpdateCompanyName,
@@ -27,12 +26,13 @@ import Card from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Input from '@/components/ui/input';
 import {
-  getCertificateInsertPayload,
   getCertificateStatus,
   getCompliancePercentage,
   getSupabaseErrorMessage, sanitizeInput,
 } from '@/lib/utils'; // Import sanitizeInput from utils
 import type { Certificate, Company } from '@/types';
+
+const UNDO_WINDOW_MS = 5_000;
 
 const fileToBase64 = async (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -190,27 +190,14 @@ export default function CompanyDetailPage() {
     setDeleteConfirmOpen(false);
     setError(null);
 
-    try {
-      const deleteResult = await serverDeleteCompany(companyToDelete.id);
-      if (!deleteResult.ok) {
-        throw new Error(deleteResult.error || 'Failed to delete company.');
-      }
-
-      try {
-        await serverLogActivity({
-          action: 'Company Deleted',
-          entity: companyToDelete.name,
-          companyId: companyToDelete.id,
-        });
-      } catch (logError) {
-        console.error('Failed to log company deletion:', logError);
-      }
-      router.push('/companies');
-    } catch (caughtError) {
-      console.error('Failed to delete company:', caughtError);
-      setError(getSupabaseErrorMessage(caughtError, 'Failed to delete company.'));
-      setDeletingCompany(false);
-    }
+    deletedCompanyRef.current = companyToDelete;
+    setUndoVisible(true);
+    undoTimeoutRef.current = window.setTimeout(() => {
+      undoTimeoutRef.current = null;
+      deletedCompanyRef.current = null;
+      setUndoVisible(false);
+      void permanentlyDeleteCompany(companyToDelete);
+    }, UNDO_WINDOW_MS);
   };
 
   const handleAddCertificate = async (values: AddCertificateFormValues) => {
@@ -285,7 +272,36 @@ export default function CompanyDetailPage() {
     setCertToDelete(null);
     setError(null);
     setCertificates((current) => current.filter((item) => item.id !== certificate.id));
+    deletedCertificateRef.current = certificate;
+    setUndoVisible(true);
+    undoTimeoutRef.current = window.setTimeout(() => {
+      undoTimeoutRef.current = null;
+      deletedCertificateRef.current = null;
+      setUndoVisible(false);
+      void permanentlyDeleteCertificate(certificate, company);
+    }, UNDO_WINDOW_MS);
+  };
 
+  const permanentlyDeleteCompany = async (companyToDelete: Company) => {
+    try {
+      const deleteResult = await serverDeleteCompany(companyToDelete.id);
+      if (!deleteResult.ok) {
+        throw new Error(deleteResult.error || 'Failed to delete company.');
+      }
+
+      await serverLogActivity({
+        action: 'Company Deleted',
+        entity: companyToDelete.name,
+        companyId: companyToDelete.id,
+      });
+      router.push('/companies');
+    } catch (caughtError) {
+      setError(getSupabaseErrorMessage(caughtError, 'Failed to delete company.'));
+      setDeletingCompany(false);
+    }
+  };
+
+  const permanentlyDeleteCertificate = async (certificate: Certificate, companyToDeleteFrom: Company) => {
     try {
       const deletedCertificate = await serverDeleteCertificate(certificate.id);
       if (!deletedCertificate) {
@@ -294,8 +310,8 @@ export default function CompanyDetailPage() {
 
       await serverLogActivity({
         action: 'Certificate Deleted',
-        entity: `${company.name} - ${certificate.name}`,
-        companyId: company.id,
+        entity: `${companyToDeleteFrom.name} - ${certificate.name}`,
+        companyId: companyToDeleteFrom.id,
         certId: certificate.id,
       });
     } catch (caughtError) {
@@ -319,25 +335,10 @@ export default function CompanyDetailPage() {
 
     try {
       if (deletedCertificateRef.current) {
-        const payload = getCertificateInsertPayload(deletedCertificateRef.current);
-        const data = await serverInsertCertificate(payload);
-        setCertificates((current) => sortCertificates([...current, data]));
-        await serverLogActivity({
-          action: 'Certificate Deletion Undone',
-          entity: `${company?.name} - ${data.name}`,
-          companyId: company?.id,
-          certId: data.id,
-        });
+        const certificateToRestore = deletedCertificateRef.current;
+        setCertificates((current) => sortCertificates([...current, certificateToRestore]));
         deletedCertificateRef.current = null;
       } else if (deletedCompanyRef.current) {
-        setCompany(deletedCompanyRef.current);
-        const certificateData = await serverFetchCertificatesByCompany(deletedCompanyRef.current.id);
-        setCertificates(certificateData);
-        await serverLogActivity({
-          action: 'Company Deletion Undone',
-          entity: deletedCompanyRef.current.name,
-          companyId: deletedCompanyRef.current.id,
-        });
         deletedCompanyRef.current = null;
       }
     } catch (caughtError) {
@@ -345,7 +346,7 @@ export default function CompanyDetailPage() {
     } finally {
       setUndoing(false);
       setUndoVisible(false);
-      setDeletingCompany(false); // Reset deleting state
+      setDeletingCompany(false);
     }
   };
 
@@ -441,11 +442,11 @@ export default function CompanyDetailPage() {
                   variant="outline"
                   className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
                   onClick={() => setDeleteConfirmOpen(true)}
-                  disabled={deletingCompany}
+                  disabled={deletingCompany || undoVisible}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   {deletingCompany ? 'Deleting...' : 'Delete Company'}</Button>
-                <Button onClick={() => setModalOpen(true)}>Add Certificate</Button>
+                <Button onClick={() => setModalOpen(true)} disabled={undoVisible}>Add Certificate</Button>
               </>
             )}
           </div>
@@ -487,7 +488,7 @@ export default function CompanyDetailPage() {
               <h2 className="mt-2 text-[20px] font-semibold text-[#1D1D1F]">Certificate registry</h2>
             </div>
             <div className="mt-6">
-              <CertTable certificates={certificates} expiryThreshold={expiryThreshold} onDelete={handleDeleteCertificate} />
+              <CertTable certificates={certificates} expiryThreshold={expiryThreshold} onDelete={handleDeleteCertificate} deleteDisabled={undoVisible} />
             </div>
           </Card>
         </section>
@@ -506,7 +507,7 @@ export default function CompanyDetailPage() {
             <DialogHeader className="mb-8 space-y-3 p-0">
               <DialogTitle className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Delete this item?</DialogTitle>
               <DialogDescription className="text-[15px] leading-relaxed text-[#6E6E73]">
-                This action cannot be undone. The item will be permanently removed.
+                You can undo this deletion for five seconds before it is permanently removed.
               </DialogDescription>
             </DialogHeader>
 
@@ -541,7 +542,7 @@ export default function CompanyDetailPage() {
             <DialogHeader className="mb-8 space-y-3 p-0">
               <DialogTitle className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Delete this item?</DialogTitle>
               <DialogDescription className="text-[15px] leading-relaxed text-[#6E6E73]">
-                This action cannot be undone. The item will be permanently removed.
+                You can undo this deletion for five seconds before it is permanently removed.
               </DialogDescription>
             </DialogHeader>
 
@@ -569,7 +570,12 @@ export default function CompanyDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <UndoToast open={undoVisible} onUndo={handleUndoDelete} undoing={undoing} />
+      <UndoToast
+        open={undoVisible}
+        message={deletedCompanyRef.current ? 'Company deleted.' : 'Certificate deleted.'}
+        onUndo={handleUndoDelete}
+        undoing={undoing}
+      />
     </>
   );
 }

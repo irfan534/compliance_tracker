@@ -11,9 +11,10 @@ interface CertTableProps {
   certificates: Certificate[];
   expiryThreshold: number;
   onDelete: (certificate: Certificate) => void;
+  deleteDisabled?: boolean;
 }
 
-export default function CertTable({ certificates, expiryThreshold, onDelete }: CertTableProps) {
+export default function CertTable({ certificates, expiryThreshold, onDelete, deleteDisabled = false }: CertTableProps) {
   const { isGuest } = useAuthMode();
 
   return (
@@ -86,6 +87,7 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
                         variant="outline"
                         className="h-10 w-10 p-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
                         onClick={() => onDelete(certificate)}
+                        disabled={deleteDisabled}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
