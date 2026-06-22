@@ -97,7 +97,14 @@ create policy "allow_authenticated_write" on companies
 create policy "allow_owner_update" on companies
   for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "allow_owner_delete" on companies
-  for delete using (auth.uid() = owner_id);
+  for delete using (
+    auth.uid() = owner_id
+    or exists (
+      select 1 from user_profiles
+      where user_profiles.id = auth.uid()
+      and user_profiles.is_admin = true
+    )
+  );
 
 -- Certificates: public can read, only authenticated users can write
 drop policy if exists "allow_public_read" on certificates;

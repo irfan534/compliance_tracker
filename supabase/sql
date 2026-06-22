@@ -92,7 +92,8 @@ create policy "companies_tenant_isolation" on companies
   for all
   using (
     auth.uid() = owner_id or 
-    exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid())
+    exists (select 1 from company_members where company_id = companies.id and user_id = auth.uid()) or
+    exists (select 1 from user_profiles where id = auth.uid() and is_admin = true)
   );
 
 -- Certificates: Inherit access from company membership

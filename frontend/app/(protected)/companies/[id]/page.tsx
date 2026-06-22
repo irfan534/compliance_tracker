@@ -191,7 +191,11 @@ export default function CompanyDetailPage() {
     setError(null);
 
     try {
-      await serverDeleteCompany(companyToDelete.id);
+      const deleteResult = await serverDeleteCompany(companyToDelete.id);
+      if (!deleteResult.ok) {
+        throw new Error(deleteResult.error || 'Failed to delete company.');
+      }
+
       try {
         await serverLogActivity({
           action: 'Company Deleted',

@@ -8,6 +8,19 @@ const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+type ServerActionResult = {
+  ok: boolean;
+  error?: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 /**
  * SECURITY GATE: Verifies that the current session user has access to a company.
  * Prevents IDOR when using the Service Role client.
@@ -180,17 +193,29 @@ export async function serverCreateCompany(name: string, logoUrl?: string | null)
   return data;
 }
 
-export async function serverDeleteCompany(id: string) {
-  await verifyMembership(id);
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Company deletion is not configured. Add SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy.');
-  }
+export async function serverDeleteCompany(id: string): Promise<ServerActionResult> {
+  try {
+    await verifyMembership(id);
 
-  const supabase = getServerSupabaseClient();
-  const { error } = await supabase.from('companies').delete().eq('id', id);
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? getServerSupabaseClient()
+      : await getSupabaseServerClient();
 
-  if (error) {
-    throw error;
+    const { error } = await supabase.from('companies').delete().eq('id', id);
+
+    if (error) {
+      return {
+        ok: false,
+        error: getErrorMessage(error, 'Failed to delete company.'),
+      };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getErrorMessage(error, 'Failed to delete company.'),
+    };
   }
 }
 
