@@ -7,6 +7,7 @@ import type { Certificate, Company, LogEntry } from '@/types';
 const MAX_TEXT_LENGTH = 500;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const ADMIN_EMAILS = new Set(['grcteam@gmail.com']);
 
 type ServerActionResult = {
   ok: boolean;
@@ -33,17 +34,15 @@ async function requireAuthenticatedUser() {
   return user;
 }
 
+function isAdminEmail(email: string | null | undefined) {
+  return !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
+
 async function verifyMembership(companyId: string) {
   const user = await requireAuthenticatedUser();
   const serviceClient = getServerSupabaseClient();
 
-  const { data: profile } = await serviceClient
-    .from('user_profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (profile?.is_admin) {
+  if (isAdminEmail(user.email)) {
     return user;
   }
 
