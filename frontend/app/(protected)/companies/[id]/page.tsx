@@ -185,40 +185,28 @@ export default function CompanyDetailPage() {
       return;
     }
 
+    const companyToDelete = company;
     setDeletingCompany(true);
     setDeleteConfirmOpen(false);
     setError(null);
 
-    // Store the company for potential undo
-    deletedCompanyRef.current = company;
-    // Visually remove the company and its certificates from the page immediately
-    setCompany(null);
-    setCertificates([]);
-
-    setUndoVisible(true);
-
-    if (undoTimeoutRef.current) {
-      window.clearTimeout(undoTimeoutRef.current);
-    }
-
-    undoTimeoutRef.current = window.setTimeout(async () => {
+    try {
+      await serverDeleteCompany(companyToDelete.id);
       try {
-        if (deletedCompanyRef.current) { // Ensure it hasn't been undone
-          await serverDeleteCompany(deletedCompanyRef.current.id);
-          await serverLogActivity({
-            action: 'Company Deleted',
-            entity: deletedCompanyRef.current.name,
-            companyId: deletedCompanyRef.current.id,
-          });
-        }
-      } catch (caughtError) {
-        console.error('Failed to permanently delete company after undo window:', caughtError);
-        setError(getSupabaseErrorMessage(caughtError, 'Failed to permanently delete company.'));
-      } finally {
-        router.push('/companies'); // Redirect after the undo window or permanent delete
-        setDeletingCompany(false);
+        await serverLogActivity({
+          action: 'Company Deleted',
+          entity: companyToDelete.name,
+          companyId: companyToDelete.id,
+        });
+      } catch (logError) {
+        console.error('Failed to log company deletion:', logError);
       }
-    }, 5000);
+      router.push('/companies');
+    } catch (caughtError) {
+      console.error('Failed to delete company:', caughtError);
+      setError(getSupabaseErrorMessage(caughtError, 'Failed to delete company.'));
+      setDeletingCompany(false);
+    }
   };
 
   const handleAddCertificate = async (values: AddCertificateFormValues) => {

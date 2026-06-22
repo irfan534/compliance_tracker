@@ -23,6 +23,17 @@ async function requireAuthenticatedUser() {
 async function verifyMembership(companyId: string) {
   const user = await requireAuthenticatedUser();
   const serviceClient = getServerSupabaseClient();
+
+  const { data: profile } = await serviceClient
+    .from('user_profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.is_admin) {
+    return user;
+  }
+
   const { data } = await serviceClient
     .from('companies')
     .select('id, owner_id, company_members(user_id)')
@@ -171,6 +182,10 @@ export async function serverCreateCompany(name: string, logoUrl?: string | null)
 
 export async function serverDeleteCompany(id: string) {
   await verifyMembership(id);
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Company deletion is not configured. Add SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy.');
+  }
+
   const supabase = getServerSupabaseClient();
   const { error } = await supabase.from('companies').delete().eq('id', id);
 
