@@ -3,6 +3,7 @@
 import { Building2, Trash2 } from 'lucide-react';
 import Badge from '@/components/ui/badge';
 import Button from '@/components/ui/button';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
 import { formatDate, getCertificateStatus, getStatusBadgeVariant, getStatusLabel } from '@/lib/utils';
 import type { Certificate } from '@/types';
 
@@ -13,6 +14,8 @@ interface CertTableProps {
 }
 
 export default function CertTable({ certificates, expiryThreshold, onDelete }: CertTableProps) {
+  const { isGuest } = useAuthMode();
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left">
@@ -24,7 +27,7 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
             <th className="px-4 py-3 font-medium">Issue Date</th>
             <th className="px-4 py-3 font-medium">Expiry Date</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium text-right">Delete</th>
+            {!isGuest && <th className="px-4 py-3 font-medium text-right">Delete</th>}
           </tr>
         </thead>
         <tbody>
@@ -77,21 +80,23 @@ export default function CertTable({ certificates, expiryThreshold, onDelete }: C
                   <td className="px-4 py-4">
                     <Badge variant={getStatusBadgeVariant(status)}>{getStatusLabel(status, certificate.expiry_date)}</Badge>
                   </td>
-                  <td className="px-4 py-4 text-right">
-                    <Button
-                      variant="outline"
-                      className="h-10 w-10 p-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => onDelete(certificate)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
+                  {!isGuest && (
+                    <td className="px-4 py-4 text-right">
+                      <Button
+                        variant="outline"
+                        className="h-10 w-10 p-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => onDelete(certificate)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td className="px-4 py-10 text-center text-sm text-[#6E6E73]" colSpan={7}>
+              <td className="px-4 py-10 text-center text-sm text-[#6E6E73]" colSpan={isGuest ? 6 : 7}>
                 No certificates recorded for this company yet.
               </td>
             </tr>

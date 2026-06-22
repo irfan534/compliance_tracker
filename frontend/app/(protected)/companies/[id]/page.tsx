@@ -21,6 +21,7 @@ import CertTable from '@/components/CertTable';
 import ComplianceBar from '@/components/ComplianceBar';
 import UndoToast from '@/components/UndoToast';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
 import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,6 +46,7 @@ export default function CompanyDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { expiryThreshold } = useAppSettings();
+  const { isGuest } = useAuthMode();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const undoTimeoutRef = useRef<number | null>(null);
   const deletedCertificateRef = useRef<Certificate | null>(null);
@@ -115,6 +117,10 @@ export default function CompanyDetailPage() {
   const compliance = useMemo(() => getCompliancePercentage(certificates, expiryThreshold), [certificates, expiryThreshold]);
 
   const handleNameSave = async () => {
+    if (isGuest) {
+      return;
+    }
+
     if (!company || !editingName.trim() || editingName.trim() === company.name) {
       setEditingName(company?.name ?? '');
       return;
@@ -144,7 +150,7 @@ export default function CompanyDetailPage() {
   const handleCompanyLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
-    if (!file || !company) {
+    if (isGuest || !file || !company) {
       return;
     }
 
@@ -175,7 +181,7 @@ export default function CompanyDetailPage() {
   };
 
   const handleDeleteCompany = async () => {
-    if (!company) {
+    if (isGuest || !company) {
       return;
     }
 
@@ -216,7 +222,7 @@ export default function CompanyDetailPage() {
   };
 
   const handleAddCertificate = async (values: AddCertificateFormValues) => {
-    if (!company) {
+    if (isGuest || !company) {
       return;
     }
 
@@ -269,12 +275,16 @@ export default function CompanyDetailPage() {
   };
 
   const handleDeleteCertificate = (certificate: Certificate) => {
+    if (isGuest) {
+      return;
+    }
+
     setCertToDelete(certificate);
     setCertDeleteConfirmOpen(true);
   };
 
   const handleConfirmDeleteCertificate = async () => {
-    if (!company || !certToDelete) {
+    if (isGuest || !company || !certToDelete) {
       return;
     }
 
@@ -303,6 +313,10 @@ export default function CompanyDetailPage() {
   };
 
   const handleUndoDelete = async () => {
+    if (isGuest) {
+      return;
+    }
+
     setUndoing(true);
     setError(null);
 
@@ -404,6 +418,7 @@ export default function CompanyDetailPage() {
                       e.currentTarget.blur();
                     }
                   }}
+                  disabled={isGuest}
                   className="min-w-[240px] border-transparent bg-transparent px-0 py-0 text-[28px] font-bold tracking-[-0.5px] text-[#1D1D1F] focus:border-transparent focus:ring-0"
                 />
               </div>
@@ -420,23 +435,27 @@ export default function CompanyDetailPage() {
                 void handleCompanyLogoUpload(event);
               }}
             />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={logoUploading}
-            >
-              <ImagePlus className="mr-2 h-4 w-4" />
-              {logoUploading ? 'Uploading Logo...' : 'Upload Logo'}
-            </Button>
-            <Button
-              variant="outline"
-              className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => setDeleteConfirmOpen(true)}
-              disabled={deletingCompany}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deletingCompany ? 'Deleting...' : 'Delete Company'}</Button>
-            <Button onClick={() => setModalOpen(true)}>Add Certificate</Button>
+            {!isGuest && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={logoUploading}
+                >
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  {logoUploading ? 'Uploading Logo...' : 'Upload Logo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={deletingCompany}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deletingCompany ? 'Deleting...' : 'Delete Company'}</Button>
+                <Button onClick={() => setModalOpen(true)}>Add Certificate</Button>
+              </>
+            )}
           </div>
         </section>
 
@@ -483,7 +502,7 @@ export default function CompanyDetailPage() {
       </div>
       )}
 
-      <AddCertModal open={modalOpen} onOpenChange={setModalOpen} isSubmitting={addingCertificate} onSave={handleAddCertificate} />
+      <AddCertModal open={modalOpen} onOpenChange={setModalOpen} isSubmitting={addingCertificate} onSave={handleAddCertificate} isGuest={isGuest} />
 
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="max-w-[400px] rounded-[32px] border border-[#E5E5E5] bg-white p-8 overflow-hidden shadow-2xl">
@@ -500,12 +519,14 @@ export default function CompanyDetailPage() {
             </DialogHeader>
 
             <div className="flex w-full flex-col gap-3">
-              <Button 
-                className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]" 
-                onClick={() => void handleDeleteCompany()}
-              >
-                Delete
-              </Button>
+              {!isGuest && (
+                <Button
+                  className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]"
+                  onClick={() => void handleDeleteCompany()}
+                >
+                  Delete
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 className="h-14 w-full rounded-2xl text-[17px] font-medium text-[#6E6E73] transition-all hover:bg-[#F5F5F7] active:scale-[0.98]"
@@ -533,12 +554,14 @@ export default function CompanyDetailPage() {
             </DialogHeader>
 
             <div className="flex w-full flex-col gap-3">
-              <Button 
-                className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]" 
-                onClick={() => void handleConfirmDeleteCertificate()}
-              >
-                Delete
-              </Button>
+              {!isGuest && (
+                <Button
+                  className="h-14 w-full rounded-2xl bg-[#FF3B30] text-[17px] font-semibold text-white transition-all hover:bg-[#D70015] active:scale-[0.98]"
+                  onClick={() => void handleConfirmDeleteCertificate()}
+                >
+                  Delete
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 className="h-14 w-full rounded-2xl text-[17px] font-medium text-[#6E6E73] transition-all hover:bg-[#F5F5F7] active:scale-[0.98]"

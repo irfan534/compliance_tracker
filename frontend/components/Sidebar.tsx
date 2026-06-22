@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Building2, FileText, LayoutGrid, LogOut, PanelLeft, PanelLeftClose, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
@@ -22,6 +23,7 @@ interface SidebarProps {
 export default function Sidebar({ expanded, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isGuest, loading: authLoading } = useAuthMode();
 
   const handleSignOut = async () => {
     const supabase = getSupabaseBrowserClient();
@@ -111,30 +113,31 @@ export default function Sidebar({ expanded, onToggle }: SidebarProps) {
           })}
         </nav>
 
-        {/* Sign Out */}
-        <div className={cn('pb-2', expanded ? 'px-2' : 'px-1')}>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className={cn(
-              'group flex h-10 w-full overflow-hidden rounded-lg text-[15px] font-medium transition-colors duration-200 text-[var(--app-muted)] hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]',
-              expanded ? 'items-center gap-3 px-3' : 'items-center justify-center',
-            )}
-            aria-label="Sign out"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-              <LogOut className="h-5 w-5 text-[var(--app-muted)] group-hover:text-[var(--app-text)]" />
-            </div>
-            <span
+        {!authLoading && !isGuest && (
+          <div className={cn('pb-2', expanded ? 'px-2' : 'px-1')}>
+            <button
+              type="button"
+              onClick={handleSignOut}
               className={cn(
-                'whitespace-nowrap transition-opacity duration-150',
-                expanded ? 'opacity-100 delay-150' : 'pointer-events-none w-0 opacity-0',
+                'group flex h-10 w-full overflow-hidden rounded-lg text-[15px] font-medium transition-colors duration-200 text-[var(--app-muted)] hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]',
+                expanded ? 'items-center gap-3 px-3' : 'items-center justify-center',
               )}
+              aria-label="Sign out"
             >
-              Sign Out
-            </span>
-          </button>
-        </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                <LogOut className="h-5 w-5 text-[var(--app-muted)] group-hover:text-[var(--app-text)]" />
+              </div>
+              <span
+                className={cn(
+                  'whitespace-nowrap transition-opacity duration-150',
+                  expanded ? 'opacity-100 delay-150' : 'pointer-events-none w-0 opacity-0',
+                )}
+              >
+                Sign Out
+              </span>
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

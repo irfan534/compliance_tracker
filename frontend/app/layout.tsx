@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import '@/styles/globals.css';
 import { AppSettingsProvider } from '@/components/providers/app-settings-provider';
+import { AuthModeProvider } from '@/components/providers/auth-mode-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
 export const metadata: Metadata = {
@@ -21,7 +22,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AppSettingsProvider>{children}</AppSettingsProvider>
+          <AuthModeProvider>
+            <AppSettingsProvider>{children}</AppSettingsProvider>
+          </AuthModeProvider>
         </ThemeProvider>
       </body>
     </html>

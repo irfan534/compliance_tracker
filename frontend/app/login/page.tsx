@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 import Button from '@/components/ui/button';
 import Card from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { useAppSettings } from '@/components/providers/app-settings-provider';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { appName } = useAppSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,15 +21,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect to dashboard or return URL
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.replace('/dashboard');
+        const redirectUrl = searchParams.get('redirect') || '/dashboard';
+        router.replace(redirectUrl);
       }
     });
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -47,7 +49,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace('/dashboard');
+    const redirectUrl = searchParams.get('redirect') || '/dashboard';
+    router.replace(redirectUrl);
   };
 
   return (

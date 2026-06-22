@@ -4,7 +4,12 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 
-export default function AuthGate({ children }: { children: ReactNode }) {
+interface AuthGateProps {
+  children: ReactNode;
+  requireLogin?: boolean;
+}
+
+export default function AuthGate({ children, requireLogin = false }: AuthGateProps) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
@@ -13,7 +18,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+      if (requireLogin && !session) {
         router.replace('/login');
       } else {
         setReady(true);
@@ -23,7 +28,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     // Listen for auth state changes (sign-out, token refresh, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        if (!session) {
+        if (requireLogin && !session) {
           router.replace('/login');
         }
       },
@@ -32,7 +37,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, requireLogin]);
 
   if (!ready) {
     return (

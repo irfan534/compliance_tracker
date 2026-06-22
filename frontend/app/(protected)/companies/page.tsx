@@ -18,6 +18,7 @@ import Button from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
 import {
   getCertificateStatus,
   getCompanyStatusLabel,
@@ -45,6 +46,7 @@ const fileToBase64 = async (file: File) =>
 export default function CompaniesPage() {
   const router = useRouter();
   const { expiryThreshold } = useAppSettings();
+  const { isGuest } = useAuthMode();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,10 @@ export default function CompaniesPage() {
   }, []);
 
   const handleCreateCompany = async () => {
+    if (isGuest) {
+      return;
+    }
+
     if (!companyName.trim()) {
       setError('Enter a company name.');
       return;
@@ -119,7 +125,7 @@ export default function CompaniesPage() {
   };
 
   const handleAddCertificate = async (values: AddCertificateFormValues) => {
-    if (!selectedCompany) {
+    if (isGuest || !selectedCompany) {
       return;
     }
 
@@ -199,10 +205,12 @@ export default function CompaniesPage() {
               Browse company compliance status, logo assets, and certificate coverage.
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Company
-          </Button>
+          {!isGuest && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Company
+            </Button>
+          )}
         </section>
 
         {error ? (
@@ -296,15 +304,17 @@ export default function CompaniesPage() {
                       <Button variant="outline" className="flex-1" onClick={() => router.push(`/companies/${company.id}`)}>
                         Open
                       </Button>
-                      <Button
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedCompany(company);
-                          setCertificateModalOpen(true);
-                        }}
-                      >
-                        Add Certificate
-                      </Button>
+                      {!isGuest && (
+                        <Button
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setCertificateModalOpen(true);
+                          }}
+                        >
+                          Add Certificate
+                        </Button>
+                      )}
                     </div>
                   </Card>
                 </motion.div>
@@ -321,10 +331,12 @@ export default function CompaniesPage() {
                   <p className="mt-2 max-w-md text-sm text-[#6E6E73]">
                     Add company records in Supabase and they will appear here automatically.
                   </p>
-                  <Button className="mt-6" onClick={() => setCreateOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Company
-                  </Button>
+                  {!isGuest && (
+                    <Button className="mt-6" onClick={() => setCreateOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Company
+                    </Button>
+                  )}
                 </div>
               </Card>
             ) : null}
@@ -352,9 +364,11 @@ export default function CompaniesPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => void handleCreateCompany()} disabled={creatingCompany}>
-              {creatingCompany ? 'Creating...' : 'Create Company'}
-            </Button>
+            {!isGuest && (
+              <Button onClick={() => void handleCreateCompany()} disabled={creatingCompany}>
+                {creatingCompany ? 'Creating...' : 'Create Company'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -369,6 +383,7 @@ export default function CompaniesPage() {
         }}
         isSubmitting={addingCertificate}
         onSave={handleAddCertificate}
+        isGuest={isGuest}
       />
     </>
   );

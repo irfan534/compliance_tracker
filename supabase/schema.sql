@@ -71,21 +71,100 @@ alter table companies enable row level security;
 alter table certificates enable row level security;
 alter table logs enable row level security;
 alter table settings enable row level security;
+alter table user_profiles enable row level security;
 
--- RLS Policies: Block all access from the anonymous key.
--- All legitimate database access is expected to come from server actions
--- using the SUPABASE_SERVICE_ROLE_KEY, which bypasses RLS.
-create policy "block_anon" on companies
-  for all using (false) with check (false);
+-- RLS Policies: Allow public SELECT (read-only guest access), but protect writes
+-- User Profiles: public can read, only authenticated users can write their own
+drop policy if exists "allow_public_read" on user_profiles;
+drop policy if exists "allow_self_write" on user_profiles;
+drop policy if exists "allow_self_update" on user_profiles;
+create policy "allow_public_read" on user_profiles
+  for select using (true);
+create policy "allow_self_write" on user_profiles
+  for insert with check (auth.uid() = id);
+create policy "allow_self_update" on user_profiles
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 
-create policy "block_anon" on certificates
-  for all using (false) with check (false);
+-- Companies: public can read, only authenticated users can write
+drop policy if exists "allow_public_read" on companies;
+drop policy if exists "allow_authenticated_write" on companies;
+drop policy if exists "allow_owner_update" on companies;
+drop policy if exists "allow_owner_delete" on companies;
+create policy "allow_public_read" on companies
+  for select using (true);
+create policy "allow_authenticated_write" on companies
+  for insert with check (auth.uid() = owner_id);
+create policy "allow_owner_update" on companies
+  for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create policy "allow_owner_delete" on companies
+  for delete using (auth.uid() = owner_id);
 
-create policy "block_anon" on logs
-  for all using (false) with check (false);
+-- Certificates: public can read, only authenticated users can write
+drop policy if exists "allow_public_read" on certificates;
+drop policy if exists "allow_authenticated_write" on certificates;
+drop policy if exists "allow_owner_update" on certificates;
+drop policy if exists "allow_owner_delete" on certificates;
+create policy "allow_public_read" on certificates
+  for select using (true);
+create policy "allow_authenticated_write" on certificates
+  for insert with check (
+    exists (
+      select 1 from companies
+      where companies.id = certificates.company_id
+      and (companies.owner_id = auth.uid() or exists (
+        select 1 from company_members
+        where company_members.company_id = companies.id
+        and company_members.user_id = auth.uid()
+      ))
+    )
+  );
+create policy "allow_owner_update" on certificates
+  for update using (
+    exists (
+      select 1 from companies
+      where companies.id = certificates.company_id
+      and (companies.owner_id = auth.uid() or exists (
+        select 1 from company_members
+        where company_members.company_id = companies.id
+        and company_members.user_id = auth.uid()
+      ))
+    )
+  ) with check (
+    exists (
+      select 1 from companies
+      where companies.id = certificates.company_id
+      and (companies.owner_id = auth.uid() or exists (
+        select 1 from company_members
+        where company_members.company_id = companies.id
+        and company_members.user_id = auth.uid()
+      ))
+    )
+  );
+create policy "allow_owner_delete" on certificates
+  for delete using (
+    exists (
+      select 1 from companies
+      where companies.id = certificates.company_id
+      and (companies.owner_id = auth.uid() or exists (
+        select 1 from company_members
+        where company_members.company_id = companies.id
+        and company_members.user_id = auth.uid()
+      ))
+    )
+  );
 
-create policy "block_anon" on settings
-  for all using (false) with check (false);
+-- Logs: public can read (audit trail visibility), only authenticated inserts
+drop policy if exists "allow_public_read" on logs;
+drop policy if exists "allow_authenticated_write" on logs;
+create policy "allow_public_read" on logs
+  for select using (true);
+create policy "allow_authenticated_write" on logs
+  for insert with check (auth.uid() is not null);
+
+-- Settings: public can read, no one can write via client (settings managed server-side)
+drop policy if exists "allow_public_read" on settings;
+create policy "allow_public_read" on settings
+  for select using (true);
 
 -- Storage Buckets: Set to private by default
 insert into storage.buckets (id, name, public)
@@ -94,6 +173,7 @@ on conflict (id) do nothing;
 
 -- Storage Policies: Block all access from the anonymous key.
 -- Access to storage is managed by signed URLs generated server-side.
+drop policy if exists "block_anon_storage" on storage.objects;
 create policy "block_anon_storage" on storage.objects
   for all
   using (false)

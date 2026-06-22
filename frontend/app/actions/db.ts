@@ -12,11 +12,16 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
  * SECURITY GATE: Verifies that the current session user has access to a company.
  * Prevents IDOR when using the Service Role client.
  */
-async function verifyMembership(companyId: string) {
+async function requireAuthenticatedUser() {
   const authClient = await getSupabaseServerClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) throw new Error('Unauthorized');
 
+  return user;
+}
+
+async function verifyMembership(companyId: string) {
+  const user = await requireAuthenticatedUser();
   const serviceClient = getServerSupabaseClient();
   const { data } = await serviceClient
     .from('companies')
@@ -84,28 +89,33 @@ const resolveLogoUrl = async (value: string | null, bucketHint?: StorageBucket) 
     return null;
   }
 
-  const supabase = getServerSupabaseClient();
-  const parsed = parseLogoValue(value);
+  try {
+    const supabase = getServerSupabaseClient();
+    const parsed = parseLogoValue(value);
 
-  if (parsed) {
-    const { data, error } = await supabase.storage.from(parsed.bucket).createSignedUrl(parsed.path, 60 * 60);
-    if (error || !data?.signedUrl) {
-      return value;
+    if (parsed) {
+      const { data, error } = await supabase.storage.from(parsed.bucket).createSignedUrl(parsed.path, 60 * 60);
+      if (error || !data?.signedUrl) {
+        return value;
+      }
+
+      return data.signedUrl;
     }
 
-    return data.signedUrl;
-  }
+    if (bucketHint && !value.startsWith('http')) {
+      const { data, error } = await supabase.storage.from(bucketHint).createSignedUrl(value, 60 * 60);
+      if (error || !data?.signedUrl) {
+        return value;
+      }
 
-  if (bucketHint && !value.startsWith('http')) {
-    const { data, error } = await supabase.storage.from(bucketHint).createSignedUrl(value, 60 * 60);
-    if (error || !data?.signedUrl) {
-      return value;
+      return data.signedUrl;
     }
 
-    return data.signedUrl;
+    return value;
+  } catch {
+    // Fallback to original URL if signing fails
+    return value;
   }
-
-  return value;
 };
 
 const signCompanyLogo = async <T extends { logo_url: string | null } | null>(company: T) => {
@@ -125,15 +135,12 @@ const signCertificateLogo = async <T extends { logo_url: string | null }>(certif
 });
 
 export async function serverFetchCompanies() {
-  const authClient = await getSupabaseServerClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) return [];
-
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, created_at, certificates(id, expiry_date)')
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .limit(500);
 
   if (error) {
     throw error;
@@ -146,9 +153,7 @@ export async function serverFetchCompanies() {
 }
 
 export async function serverCreateCompany(name: string, logoUrl?: string | null) {
-  const authClient = await getSupabaseServerClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await requireAuthenticatedUser();
 
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
@@ -175,6 +180,7 @@ export async function serverDeleteCompany(id: string) {
 }
 
 export async function serverUpdateCompanyName(id: string, name: string) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('companies')
@@ -191,6 +197,7 @@ export async function serverUpdateCompanyName(id: string, name: string) {
 }
 
 export async function serverUpdateCompanyLogo(id: string, logoUrl: string) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('companies')
@@ -214,7 +221,8 @@ export async function serverFetchDashboard() {
       .select(
         'id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at, companies(name)',
       )
-      .order('expiry_date', { ascending: true }),
+      .order('expiry_date', { ascending: true })
+      .limit(200),
     supabase.from('logs').select('*').order('created_at', { ascending: false }).limit(5),
   ]);
 
@@ -240,6 +248,7 @@ export async function serverCreateCertificate(
   expiryDate: string | null,
   logoUrl: string | null,
 ) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('certificates')
@@ -264,6 +273,7 @@ export async function serverCreateCertificate(
 }
 
 export async function serverDeleteCertificate(id: string) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { data: cert, error: fetchError } = await supabase
     .from('certificates')
@@ -289,6 +299,7 @@ export async function serverDeleteCertificate(id: string) {
 }
 
 export async function serverInsertCertificate(certificate: Certificate) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from('certificates')
@@ -321,6 +332,7 @@ export async function serverLogActivity(input: {
   certId?: string | null;
   performedBy?: string | null;
 }) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { error } = await supabase.from('logs').insert({
     action: cleanText(input.action),
@@ -336,7 +348,7 @@ export async function serverLogActivity(input: {
 }
 
 export async function serverFetchSettings() {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.from('settings').select('*');
 
   if (error) {
@@ -352,6 +364,7 @@ export async function serverFetchSettings() {
 }
 
 export async function serverUpdateSetting(key: string, value: string) {
+  await requireAuthenticatedUser();
   const supabase = getServerSupabaseClient();
   const { error } = await supabase
     .from('settings')
@@ -363,7 +376,7 @@ export async function serverUpdateSetting(key: string, value: string) {
 }
 
 export async function serverFetchLogs(limit = 20, offset = 0): Promise<{ data: LogEntry[]; total: number }> {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error, count } = await supabase
     .from('logs')
     .select('*', { count: 'exact' })
@@ -378,7 +391,7 @@ export async function serverFetchLogs(limit = 20, offset = 0): Promise<{ data: L
 }
 
 export async function serverFetchAllLogs() {
-  const supabase = getServerSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.from('logs').select('*').order('created_at', { ascending: false });
 
   if (error) {
@@ -413,7 +426,8 @@ export async function serverFetchCertificatesByCompany(companyId: string) {
     .from('certificates')
     .select('id, company_id, name, issuing_body, issue_date, expiry_date, status, logo_url, created_at')
     .eq('company_id', companyId)
-    .order('expiry_date', { ascending: true });
+    .order('expiry_date', { ascending: true })
+    .limit(500);
 
   if (error) {
     throw error;
@@ -427,6 +441,8 @@ export async function serverUploadImage(
   fileData: { base64: string; mimeType: string; size: number },
   scopeId: string,
 ): Promise<string> {
+  await requireAuthenticatedUser();
+
   if (fileData.size > MAX_UPLOAD_BYTES) {
     throw new Error('File size exceeds 2MB limit.');
   }

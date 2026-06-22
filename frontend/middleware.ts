@@ -73,8 +73,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Dashboard and data-browsing routes are public/read-only for guests.
+  // Add separate write-only routes here if they are introduced later.
+  const protectedRoutes: string[] = [];
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+
   // Unauthenticated user trying to access a protected route → redirect to login
-  if (!user && pathname !== '/login') {
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

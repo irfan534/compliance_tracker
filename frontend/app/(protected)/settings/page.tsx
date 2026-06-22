@@ -10,11 +10,13 @@ import BackButton from '@/components/BackButton';
 import Card from '@/components/ui/card';
 import Input from '@/components/ui/input';
 import { useAppSettings } from '@/components/providers/app-settings-provider';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
 import { downloadLogsCsv, getSupabaseErrorMessage } from '@/lib/utils';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { expiryThreshold, refreshSettings } = useAppSettings();
+  const { isGuest } = useAuthMode();
   const [thresholdValue, setThresholdValue] = useState(String(expiryThreshold));
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -25,6 +27,10 @@ export default function SettingsPage() {
   }, [expiryThreshold]);
 
   const handleSave = async () => {
+    if (isGuest) {
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -63,6 +69,10 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
+    if (isGuest) {
+      return;
+    }
+
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
     // Use window.location to force a full refresh and clear all caches
@@ -91,35 +101,47 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-[var(--app-text)]">Expiry Warning Threshold</label>
-              <Input type="number" min="1" value={thresholdValue} onChange={(event) => setThresholdValue(event.target.value)} />
+              <Input 
+                type="number" 
+                min="1" 
+                value={thresholdValue} 
+                onChange={(event) => setThresholdValue(event.target.value)}
+                disabled={isGuest}
+              />
             </div>
 
-            <Button onClick={() => void handleSave()} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Settings'}
-            </Button>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="space-y-6">
-            <div className="rounded-[16px] border border-[color:var(--app-border)] bg-[var(--app-surface)] p-4">
-              <p className="label-caps">Export Logs</p>
-              <p className="mt-2 text-sm text-[var(--app-muted)]">
-                Download the full append-only log history as CSV.
-              </p>
-              <Button onClick={() => void handleExport()} variant="outline" className="mt-4" disabled={exporting}>
-                <Download className="mr-2 h-4 w-4" />
-                {exporting ? 'Preparing CSV...' : 'Export Logs'}
+            {!isGuest && (
+              <Button onClick={() => void handleSave()} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Settings'}
               </Button>
-            </div>
+            )}
           </div>
         </Card>
+
+        {!isGuest && (
+          <Card>
+            <div className="space-y-6">
+              <div className="rounded-[16px] border border-[color:var(--app-border)] bg-[var(--app-surface)] p-4">
+                <p className="label-caps">Export Logs</p>
+                <p className="mt-2 text-sm text-[var(--app-muted)]">
+                  Download the full append-only log history as CSV.
+                </p>
+                <Button onClick={() => void handleExport()} variant="outline" className="mt-4" disabled={exporting}>
+                  <Download className="mr-2 h-4 w-4" />
+                  {exporting ? 'Preparing CSV...' : 'Export Logs'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
-      <Button onClick={() => void handleLogout()} className="border-red-200 bg-red-600 text-white hover:bg-red-700">
-        <LogOut className="mr-2 h-4 w-4" />
-        Logout
-      </Button>
+      {!isGuest && (
+        <Button onClick={() => void handleLogout()} className="border-red-200 bg-red-600 text-white hover:bg-red-700">
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </Button>
+      )}
     </div>
   );
 }

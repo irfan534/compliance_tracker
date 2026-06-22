@@ -2,13 +2,19 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, LogIn } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useRouter, usePathname } from 'next/navigation';
 import AuthGate from '@/components/AuthGate';
 import Sidebar from '@/components/Sidebar';
+import { useAuthMode } from '@/components/providers/auth-mode-provider';
+import Button from '@/components/ui/button';
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const { isGuest, loading: authLoading } = useAuthMode();
+  const router = useRouter();
+  const pathname = usePathname();
   const currentTheme = resolvedTheme ?? 'light';
   const isDarkTheme = currentTheme === 'dark';
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -31,8 +37,13 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
 
+  const handleLoginClick = () => {
+    const redirectUrl = encodeURIComponent(pathname);
+    router.push(`/login?redirect=${redirectUrl}`);
+  };
+
   return (
-    <AuthGate>
+    <AuthGate requireLogin={false}>
       <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
         <Sidebar
           expanded={expanded}
@@ -49,7 +60,16 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
           className="min-h-screen min-w-0 bg-[var(--app-bg)]"
           style={{ marginLeft: expanded ? '220px' : '48px', transition: 'margin-left 200ms ease' }}
         >
-          <div className="flex justify-end px-8 pt-6">
+          <div className="flex justify-end items-center gap-4 px-8 pt-6">
+            {!authLoading && isGuest && (
+              <Button
+                onClick={handleLoginClick}
+                className="flex items-center gap-2 bg-[#0071E3] text-white hover:bg-[#0066CC]"
+              >
+                <LogIn className="h-4 w-4" />
+                Login to Edit
+              </Button>
+            )}
             <button
               type="button"
               onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}

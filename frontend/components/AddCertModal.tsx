@@ -18,6 +18,7 @@ interface AddCertModalProps {
   onOpenChange: (open: boolean) => void;
   onSave: (values: AddCertificateFormValues) => Promise<void>;
   isSubmitting: boolean;
+  isGuest?: boolean;
 }
 
 const initialState: AddCertificateFormValues = {
@@ -28,7 +29,7 @@ const initialState: AddCertificateFormValues = {
   logoFile: null,
 };
 
-export default function AddCertModal({ open, onOpenChange, onSave, isSubmitting }: AddCertModalProps) {
+export default function AddCertModal({ open, onOpenChange, onSave, isSubmitting, isGuest = false }: AddCertModalProps) {
   const [values, setValues] = useState<AddCertificateFormValues>(initialState);
 
   useEffect(() => {
@@ -39,6 +40,10 @@ export default function AddCertModal({ open, onOpenChange, onSave, isSubmitting 
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isGuest) {
+      return;
+    }
+
     await onSave(values);
   };
 
@@ -104,9 +109,11 @@ export default function AddCertModal({ open, onOpenChange, onSave, isSubmitting 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save Certificate'}
-            </Button>
+            {!isGuest && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Certificate'}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
